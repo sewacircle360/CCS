@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole, Teacher, Student, Appointment, TimetableSlot, User, TeacherStatus } from './types';
 import { INITIAL_USERS, INITIAL_BLOCKS } from './mockData';
+import { OFFICIAL_CU_FACULTY_LIST } from './facultyData';
 import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
 import { LoginRegister } from './components/LoginRegister';
@@ -22,7 +23,7 @@ export const App: React.FC = () => {
 
   const [teachers, setTeachers] = useState<Teacher[]>(() => {
     const saved = localStorage.getItem('cu_ccs_teachers');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : OFFICIAL_CU_FACULTY_LIST;
   });
 
   const [students, setStudents] = useState<Student[]>(() => {
@@ -40,7 +41,133 @@ export const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Sync to Supabase & LocalStorage
+  // FETCH LIVE DATA FROM SUPABASE ON MOUNT & SUBSCRIBE TO REAL-TIME CHANGES
+  useEffect(() => {
+    const fetchCloudData = async () => {
+      try {
+        // Fetch Students from Supabase
+        const { data: cloudStudents } = await supabase.from('students').select('*');
+        if (cloudStudents && cloudStudents.length > 0) {
+          const mappedStudents: Student[] = cloudStudents.map(s => ({
+            id: s.id || `stud-${s.uid}`,
+            userId: s.user_id || `user-${s.uid}`,
+            name: s.name,
+            uid: s.uid,
+            email: s.email,
+            department: s.department,
+            semester: s.semester,
+            phone: s.phone,
+          }));
+          setStudents(prev => {
+            const combined = [...mappedStudents];
+            prev.forEach(p => {
+              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.uid === p.uid)) {
+                combined.push(p);
+              }
+            });
+            return combined;
+          });
+        }
+
+        // Fetch Teachers from Supabase
+        const { data: cloudTeachers } = await supabase.from('teachers').select('*');
+        if (cloudTeachers && cloudTeachers.length > 0) {
+          const mappedTeachers: Teacher[] = cloudTeachers.map(t => ({
+            id: t.id || `cu-${t.emp_id}`,
+            userId: t.user_id || '',
+            name: t.name,
+            empId: t.emp_id,
+            email: t.email,
+            phone: t.phone,
+            department: t.department,
+            designation: t.designation,
+            blockName: t.block_name || `Chandigarh University ${t.block_number}`,
+            blockNumber: t.block_number,
+            roomNumber: t.room_number,
+            cabinNumber: t.cabin_number,
+            subjects: t.subjects || ['Computer Science'],
+            status: (t.status || 'available') as TeacherStatus,
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            verified: true,
+          }));
+
+          setTeachers(prev => {
+            const combined = [...mappedTeachers];
+            prev.forEach(p => {
+              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.empId === p.empId)) {
+                combined.push(p);
+              }
+            });
+            return combined;
+          });
+        }
+
+        // Fetch Users from Supabase
+        const { data: cloudUsers } = await supabase.from('users').select('*');
+        if (cloudUsers && cloudUsers.length > 0) {
+          const mappedUsers: User[] = cloudUsers.map(u => ({
+            id: u.id,
+            email: u.email,
+            password: u.password,
+            role: u.role as UserRole,
+            name: u.name,
+            profileId: u.profile_id,
+          }));
+          setUsers(prev => {
+            const combined = [...mappedUsers];
+            prev.forEach(p => {
+              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase())) {
+                combined.push(p);
+              }
+            });
+            return combined;
+          });
+        }
+
+        // Fetch Appointments from Supabase
+        const { data: cloudApts } = await supabase.from('appointments').select('*');
+        if (cloudApts && cloudApts.length > 0) {
+          const mappedApts: Appointment[] = cloudApts.map(a => ({
+            id: a.id,
+            studentId: a.student_id,
+            studentName: a.student_name,
+            studentUid: a.student_uid,
+            studentEmail: a.student_email,
+            teacherId: a.teacher_id,
+            teacherName: a.teacher_name,
+            teacherCabin: a.teacher_cabin,
+            teacherBlock: a.teacher_block,
+            date: a.date,
+            timeSlot: a.time_slot,
+            subject: a.subject,
+            reason: a.reason,
+            status: a.status,
+            rejectionReason: a.rejection_reason,
+            createdAt: a.created_at || new Date().toLocaleString(),
+          }));
+          setAppointments(mappedApts);
+        }
+      } catch (err) {
+        console.log('Error loading Supabase cloud data:', err);
+      }
+    };
+
+    fetchCloudData();
+
+    // REALTIME SUBSCRIPTION FOR INSTANT LIVE UPDATES ACROSS ALL COMPUTERS/PHONES!
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        fetchCloudData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Sync to LocalStorage
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('cu_ccs_current_user', JSON.stringify(currentUser));
@@ -107,7 +234,7 @@ export const App: React.FC = () => {
     setUsers(prev => [newUser, ...prev]);
     setCurrentUser(newUser);
 
-    // Sync to Supabase cloud in background
+    // Sync to Supabase cloud
     try {
       await supabase.from('users').insert({
         email: newUser.email,
@@ -131,7 +258,7 @@ export const App: React.FC = () => {
         status: newTeacher.status,
       });
     } catch (e) {
-      console.log('Supabase Sync:', e);
+      console.log('Supabase Sync error:', e);
     }
   };
 
@@ -161,7 +288,7 @@ export const App: React.FC = () => {
     setUsers(prev => [newUser, ...prev]);
     setCurrentUser(newUser);
 
-    // Sync to Supabase cloud in background
+    // Sync to Supabase cloud
     try {
       await supabase.from('users').insert({
         email: newUser.email,
@@ -179,7 +306,7 @@ export const App: React.FC = () => {
         phone: newStudent.phone,
       });
     } catch (e) {
-      console.log('Supabase Sync:', e);
+      console.log('Supabase Sync error:', e);
     }
   };
 
@@ -195,7 +322,7 @@ export const App: React.FC = () => {
         cabin_number: updatedTeacher.cabinNumber,
       }).eq('email', updatedTeacher.email);
     } catch (e) {
-      console.log('Supabase status sync:', e);
+      console.log('Supabase status sync error:', e);
     }
   };
 
@@ -211,6 +338,11 @@ export const App: React.FC = () => {
       }
       return apt;
     }));
+    try {
+      await supabase.from('appointments').update({ status: 'approved' }).eq('id', appointmentId);
+    } catch (e) {
+      console.log('Supabase approve error:', e);
+    }
   };
 
   const handleRejectAppointment = async (appointmentId: string, reason: string) => {
@@ -220,6 +352,11 @@ export const App: React.FC = () => {
       }
       return apt;
     }));
+    try {
+      await supabase.from('appointments').update({ status: 'rejected', rejection_reason: reason }).eq('id', appointmentId);
+    } catch (e) {
+      console.log('Supabase reject error:', e);
+    }
   };
 
   const handleBookAppointment = async (newAptData: Omit<Appointment, 'id' | 'createdAt' | 'status'>) => {
@@ -248,7 +385,7 @@ export const App: React.FC = () => {
         status: 'pending',
       });
     } catch (e) {
-      console.log('Supabase Appointment Sync:', e);
+      console.log('Supabase Appointment Sync error:', e);
     }
   };
 
@@ -265,7 +402,7 @@ export const App: React.FC = () => {
     setTimetables(prev => prev.filter(s => s.id !== slotId));
   };
 
-  // Dynamic Resolution for Active Profile (Always guaranteed to match logged-in user!)
+  // Dynamic Resolution for Active Profile
   const activeTeacher: Teacher | null = currentUser?.role === 'teacher'
     ? (teachers.find(t => t.id === currentUser.profileId || t.email.toLowerCase() === currentUser.email.toLowerCase()) || {
         id: currentUser.profileId || `tech-${currentUser.id}`,
@@ -275,10 +412,10 @@ export const App: React.FC = () => {
         email: currentUser.email,
         phone: '+91 98000 00000',
         department: 'Computer Science & Engineering',
-        blockName: 'Chandigarh University Block A3',
-        blockNumber: 'Block A3',
-        roomNumber: '402',
-        cabinNumber: 'Cabin C-14',
+        blockName: 'Chandigarh University Block B3',
+        blockNumber: 'Block B3',
+        roomNumber: '304 A',
+        cabinNumber: 'Cabin 304 A',
         subjects: ['Computer Science'],
         status: 'available' as TeacherStatus,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
