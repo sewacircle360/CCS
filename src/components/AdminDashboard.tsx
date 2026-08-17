@@ -25,6 +25,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
 
+  const getInitials = (name: string) => {
+    const parts = name.replace(/^(Dr\.|Er\.|Prof\.|Mr\.|Ms\.)\s+/i, '').trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    if (parts[0]) return parts[0].slice(0, 2).toUpperCase();
+    return 'CU';
+  };
+
   const verifiedTeachersCount = teachers.filter(t => t.verified).length;
   const pendingAppointmentsCount = appointments.filter(a => a.status === 'pending').length;
 
@@ -197,11 +204,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <tr key={t.id}>
                     <td>
                       <div className="user-cell">
-                        <img src={t.avatar} alt={t.name} className="user-avatar" />
+                        {t.avatar ? (
+                          <img src={t.avatar} alt={t.name} className="user-avatar" />
+                        ) : (
+                          <div className="user-avatar-initials">
+                            {getInitials(t.name)}
+                          </div>
+                        )}
                         <div>
                           <div className="font-bold">{t.name}</div>
                           <div className="user-sub">
-                            CU-EMP-{t.empId} • <span className="text-red font-semibold">{t.designation}</span>
+                            Ecode: {t.empId} • <span className="text-red font-semibold">{t.designation}</span>
                           </div>
                         </div>
                       </div>
@@ -523,6 +536,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           height: 36px;
           border-radius: 50%;
           object-fit: cover;
+        }
+        .user-avatar-initials {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: var(--cu-red-gradient);
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .user-sub {
           font-size: 0.75rem;

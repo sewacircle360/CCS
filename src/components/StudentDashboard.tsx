@@ -32,7 +32,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [bookingSubject, setBookingSubject] = useState('');
   const [bookingReason, setBookingReason] = useState('');
 
-  const myAppointments = appointments.filter(a => a.studentUid === currentStudent.uid || a.studentEmail === currentStudent.email);
+  const getInitials = (name: string) => {
+    const parts = name.replace(/^(Dr\.|Er\.|Prof\.|Mr\.|Ms\.)\s+/i, '').trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    if (parts[0]) return parts[0].slice(0, 2).toUpperCase();
+    return 'CU';
+  };
+
+  const myAppointments = appointments.filter(a => a.studentUid === currentStudent.uid || a.studentEmail.toLowerCase() === currentStudent.email.toLowerCase());
 
   const filteredTeachers = teachers.filter((t) => {
     const q = searchQuery.toLowerCase();
@@ -127,7 +134,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <Search size={20} className="search-icon-lg" />
               <input
                 type="text"
-                placeholder="Search teacher by name, subject (e.g. Data Structures), block (A1-D8), or cabin..."
+                placeholder="Search teacher by name, Ecode (e.g. 6220), designation, block (A1-D8), or cabin..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input"
@@ -178,7 +185,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   {/* Clickable Header Area opens Full Profile Modal */}
                   <div className="card-click-area" onClick={() => setSelectedTeacherProfile(teacher)}>
                     <div className="card-top">
-                      <img src={teacher.avatar} alt={teacher.name} className="teacher-img" />
+                      {teacher.avatar ? (
+                        <img src={teacher.avatar} alt={teacher.name} className="teacher-img" />
+                      ) : (
+                        <div className="teacher-initials-avatar">
+                          {getInitials(teacher.name)}
+                        </div>
+                      )}
+
                       <div className="teacher-meta">
                         <span className={`badge badge-${teacher.status}`}>
                           <span className={`pulse-dot ${teacher.status}`}></span>
@@ -208,9 +222,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <BookOpen size={14} /> Subjects Taught:
                       </div>
                       <div className="subjects-list">
-                        {teacher.subjects.map((sub, i) => (
-                          <span key={i} className="subject-pill">{sub}</span>
-                        ))}
+                        {teacher.subjects && teacher.subjects.length > 0 ? (
+                          teacher.subjects.map((sub, i) => (
+                            <span key={i} className="subject-pill">{sub}</span>
+                          ))
+                        ) : (
+                          <span className="text-muted-italic">Not Added Yet</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -326,7 +344,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <div className="modal-content modal-lg">
             <div className="modal-header">
               <div className="profile-header-modal">
-                <img src={selectedTeacherProfile.avatar} alt={selectedTeacherProfile.name} className="modal-avatar" />
+                {selectedTeacherProfile.avatar ? (
+                  <img src={selectedTeacherProfile.avatar} alt={selectedTeacherProfile.name} className="modal-avatar" />
+                ) : (
+                  <div className="teacher-initials-avatar modal-initials">
+                    {getInitials(selectedTeacherProfile.name)}
+                  </div>
+                )}
                 <div>
                   <h3>{selectedTeacherProfile.name}</h3>
                   <div className="modal-sub-role">
@@ -360,16 +384,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div className="contact-row">
                 <span><Mail size={14} /> Email: <strong>{selectedTeacherProfile.email}</strong></span>
                 <span><Phone size={14} /> Contact / Intercom: <strong>{selectedTeacherProfile.phone}</strong></span>
-                <span>Employee ID: <strong>{selectedTeacherProfile.empId}</strong></span>
+                <span>Employee Ecode: <strong>{selectedTeacherProfile.empId}</strong></span>
               </div>
 
               {/* Subjects */}
               <div className="info-section">
                 <h4 className="section-title"><BookOpen size={16} /> Courses & Subjects Taught</h4>
                 <div className="subjects-list">
-                  {selectedTeacherProfile.subjects.map((sub, idx) => (
-                    <span key={idx} className="subject-pill-lg">{sub}</span>
-                  ))}
+                  {selectedTeacherProfile.subjects && selectedTeacherProfile.subjects.length > 0 ? (
+                    selectedTeacherProfile.subjects.map((sub, idx) => (
+                      <span key={idx} className="subject-pill-lg">{sub}</span>
+                    ))
+                  ) : (
+                    <span className="text-muted-italic">Not Added Yet</span>
+                  )}
                 </div>
               </div>
 
@@ -488,10 +516,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     onChange={(e) => setBookingSubject(e.target.value)}
                     className="form-control"
                   >
-                    {selectedTeacherForBooking.subjects.map((sub, i) => (
-                      <option key={i} value={sub}>{sub}</option>
-                    ))}
-                    <option value="General Academic / Project Guidance">General Academic / Project Guidance</option>
+                    {selectedTeacherForBooking.subjects && selectedTeacherForBooking.subjects.length > 0 ? (
+                      selectedTeacherForBooking.subjects.map((sub, i) => (
+                        <option key={i} value={sub}>{sub}</option>
+                      ))
+                    ) : (
+                      <option value="General Academic / Project Guidance">General Academic / Project Guidance</option>
+                    )}
                   </select>
                 </div>
 
@@ -691,11 +722,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           gap: 1rem;
         }
         .teacher-img {
-          width: 64px;
-          height: 64px;
+          width: 60px;
+          height: 60px;
           border-radius: 50%;
           object-fit: cover;
           border: 2px solid var(--cu-red);
+        }
+        .teacher-initials-avatar {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: var(--cu-red-gradient);
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px rgba(200,16,46,0.25);
+          flex-shrink: 0;
+        }
+        .modal-initials {
+          width: 64px;
+          height: 64px;
+          font-size: 1.3rem;
         }
         .teacher-meta {
           flex: 1;
@@ -771,6 +821,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           border-radius: 4px;
           font-size: 0.775rem;
           font-weight: 600;
+        }
+        .text-muted-italic {
+          color: #94a3b8;
+          font-style: italic;
+          font-size: 0.8rem;
         }
         .card-actions {
           display: flex;
@@ -881,8 +936,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           gap: 1rem;
         }
         .modal-avatar {
-          width: 60px;
-          height: 60px;
+          width: 64px;
+          height: 64px;
           border-radius: 50%;
           object-fit: cover;
           border: 2px solid var(--cu-red);
