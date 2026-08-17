@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Teacher, Student, Appointment, TimetableSlot } from '../types';
-import { Search, MapPin, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Filter, BookOpen, User, Phone, Sparkles } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Filter, BookOpen, User, Phone, Sparkles, Award, ExternalLink, Mail } from 'lucide-react';
 
 interface StudentDashboardProps {
   currentStudent: Student;
@@ -22,9 +22,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [selectedDept, setSelectedDept] = useState('all');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
 
-  // Selected teacher for Booking / Timetable view
+  // Selected teacher for Booking or Full Profile View
   const [selectedTeacherForBooking, setSelectedTeacherForBooking] = useState<Teacher | null>(null);
-  const [selectedTeacherForTimetable, setSelectedTeacherForTimetable] = useState<Teacher | null>(null);
+  const [selectedTeacherProfile, setSelectedTeacherProfile] = useState<Teacher | null>(null);
 
   // Booking Form State
   const [bookingDate, setBookingDate] = useState('2026-08-18');
@@ -40,7 +40,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       t.subjects.some(s => s.toLowerCase().includes(q)) ||
       t.department.toLowerCase().includes(q) ||
       t.blockName.toLowerCase().includes(q) ||
-      t.cabinNumber.toLowerCase().includes(q);
+      t.blockNumber.toLowerCase().includes(q) ||
+      t.cabinNumber.toLowerCase().includes(q) ||
+      t.designation.toLowerCase().includes(q);
 
     const matchesDept = selectedDept === 'all' || t.department === selectedDept;
     const matchesAvailable = !onlyAvailable || t.status === 'available';
@@ -50,7 +52,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const handleOpenBooking = (teacher: Teacher) => {
     setSelectedTeacherForBooking(teacher);
-    setBookingSubject(teacher.subjects[0] || '');
+    setBookingSubject(teacher.subjects[0] || 'General Guidance');
     setBookingReason('');
   };
 
@@ -78,6 +80,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     });
 
     setSelectedTeacherForBooking(null);
+    setSelectedTeacherProfile(null);
     setActiveTab('my_appointments');
     alert(`Appointment Request Sent to ${selectedTeacherForBooking.name}! You can track approval in "My Appointments".`);
   };
@@ -88,7 +91,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <div className="student-banner">
         <div>
           <h2>Student Connectivity Portal 🎓</h2>
-          <p>Welcome back, <strong>{currentStudent.name}</strong> ({currentStudent.uid}) • {currentStudent.department}</p>
+          <p>Welcome back, <strong>{currentStudent.name}</strong> ({currentStudent.uid}) • {currentStudent.department} • {currentStudent.semester}</p>
         </div>
         <div className="my-apt-quick-pill" onClick={() => setActiveTab('my_appointments')}>
           <Calendar size={16} />
@@ -103,7 +106,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           onClick={() => setActiveTab('find_teacher')}
         >
           <Search size={18} />
-          Find Teacher by Name, Subject or Cabin
+          Find Teacher by Name, Subject, Block or Cabin
         </button>
 
         <button
@@ -124,7 +127,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <Search size={20} className="search-icon-lg" />
               <input
                 type="text"
-                placeholder="Search teacher by ABC name, subject (e.g. Data Structures, AI), or cabin..."
+                placeholder="Search teacher by name, subject (e.g. Data Structures), block (A1-D8), or cabin..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input"
@@ -146,6 +149,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <option value="Computer Applications">Computer Applications</option>
                   <option value="Electronics & Communication">ECE</option>
                   <option value="Business School (USB)">Management (USB)</option>
+                  <option value="Mechanical Engineering">Mechanical Engineering</option>
                 </select>
               </div>
 
@@ -161,64 +165,75 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
 
           {/* Teacher Cards Grid */}
-          <div className="teachers-grid">
-            {filteredTeachers.map((teacher) => (
-              <div key={teacher.id} className="teacher-card">
-                <div className="card-top">
-                  <img src={teacher.avatar} alt={teacher.name} className="teacher-img" />
-                  <div className="teacher-meta">
-                    <span className={`badge badge-${teacher.status}`}>
-                      <span className={`pulse-dot ${teacher.status}`}></span>
-                      {teacher.status.replace('_', ' ')}
-                    </span>
-                    <h3 className="t-name">{teacher.name}</h3>
-                    <p className="t-desig">{teacher.designation}</p>
-                    <p className="t-dept">{teacher.department}</p>
-                  </div>
-                </div>
+          {filteredTeachers.length === 0 ? (
+            <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+              <User size={48} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+              <h3>No Registered Teachers Found</h3>
+              <p>Teachers can register their profiles on the Teacher Registration portal.</p>
+            </div>
+          ) : (
+            <div className="teachers-grid">
+              {filteredTeachers.map((teacher) => (
+                <div key={teacher.id} className="teacher-card clickable-card">
+                  {/* Clickable Header Area opens Full Profile Modal */}
+                  <div className="card-click-area" onClick={() => setSelectedTeacherProfile(teacher)}>
+                    <div className="card-top">
+                      <img src={teacher.avatar} alt={teacher.name} className="teacher-img" />
+                      <div className="teacher-meta">
+                        <span className={`badge badge-${teacher.status}`}>
+                          <span className={`pulse-dot ${teacher.status}`}></span>
+                          {teacher.status.replace('_', ' ')}
+                        </span>
+                        <h3 className="t-name">{teacher.name}</h3>
+                        <p className="t-desig font-semibold"><Award size={12} className="inline-icon" /> {teacher.designation}</p>
+                        <p className="t-dept">{teacher.department}</p>
+                      </div>
+                    </div>
 
-                <div className="location-box">
-                  <div className="loc-header">
-                    <MapPin size={16} className="loc-icon" />
-                    <strong>CABIN LOCATION:</strong>
-                  </div>
-                  <div className="loc-details">
-                    <div className="block-tag">{teacher.blockName} ({teacher.blockNumber})</div>
-                    <div className="room-cabin-tag">
-                      Room <strong>{teacher.roomNumber}</strong> • <strong className="cabin-red">{teacher.cabinNumber}</strong>
+                    <div className="location-box">
+                      <div className="loc-header">
+                        <MapPin size={16} className="loc-icon" />
+                        <strong>LOCATION & CABIN:</strong>
+                      </div>
+                      <div className="loc-details">
+                        <div className="block-tag">{teacher.blockNumber}</div>
+                        <div className="room-cabin-tag">
+                          Room <strong>{teacher.roomNumber}</strong> • <strong className="cabin-red">{teacher.cabinNumber}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="subjects-section">
+                      <div className="subjects-title">
+                        <BookOpen size={14} /> Subjects Taught:
+                      </div>
+                      <div className="subjects-list">
+                        {teacher.subjects.map((sub, i) => (
+                          <span key={i} className="subject-pill">{sub}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="subjects-section">
-                  <div className="subjects-title">
-                    <BookOpen size={14} /> Subjects Taught:
+                  <div className="card-actions">
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setSelectedTeacherProfile(teacher)}
+                    >
+                      <User size={14} /> Full Profile & Timetable
+                    </button>
+
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handleOpenBooking(teacher)}
+                    >
+                      <Calendar size={14} /> Book Cabin Visit
+                    </button>
                   </div>
-                  <div className="subjects-list">
-                    {teacher.subjects.map((sub, i) => (
-                      <span key={i} className="subject-pill">{sub}</span>
-                    ))}
-                  </div>
                 </div>
-
-                <div className="card-actions">
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setSelectedTeacherForTimetable(teacher)}
-                  >
-                    <Clock size={14} /> View Timetable
-                  </button>
-
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleOpenBooking(teacher)}
-                  >
-                    <Calendar size={14} /> Book Cabin Visit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -305,6 +320,125 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
       )}
 
+      {/* FULL TEACHER PROFILE & TIMETABLE MODAL */}
+      {selectedTeacherProfile && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-lg">
+            <div className="modal-header">
+              <div className="profile-header-modal">
+                <img src={selectedTeacherProfile.avatar} alt={selectedTeacherProfile.name} className="modal-avatar" />
+                <div>
+                  <h3>{selectedTeacherProfile.name}</h3>
+                  <div className="modal-sub-role">
+                    <Award size={14} className="inline-icon red" /> <strong>{selectedTeacherProfile.designation}</strong> • {selectedTeacherProfile.department}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              {/* Status & Location Cards */}
+              <div className="modal-grid-2">
+                <div className="info-box">
+                  <label className="info-label">Real-Time Availability Status:</label>
+                  <span className={`badge badge-${selectedTeacherProfile.status} badge-lg`}>
+                    <span className={`pulse-dot ${selectedTeacherProfile.status}`}></span>
+                    {selectedTeacherProfile.status.replace('_', ' ').toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="info-box">
+                  <label className="info-label">Campus Location & Cabin:</label>
+                  <div className="loc-text">
+                    <MapPin size={16} className="loc-icon" />
+                    <strong>{selectedTeacherProfile.blockNumber}</strong> • Room {selectedTeacherProfile.roomNumber} • <span className="cabin-red">{selectedTeacherProfile.cabinNumber}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="contact-row">
+                <span><Mail size={14} /> Email: <strong>{selectedTeacherProfile.email}</strong></span>
+                <span><Phone size={14} /> Contact / Intercom: <strong>{selectedTeacherProfile.phone}</strong></span>
+                <span>Employee ID: <strong>{selectedTeacherProfile.empId}</strong></span>
+              </div>
+
+              {/* Subjects */}
+              <div className="info-section">
+                <h4 className="section-title"><BookOpen size={16} /> Courses & Subjects Taught</h4>
+                <div className="subjects-list">
+                  {selectedTeacherProfile.subjects.map((sub, idx) => (
+                    <span key={idx} className="subject-pill-lg">{sub}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timetable Schedule Grid */}
+              <div className="info-section">
+                <h4 className="section-title"><Clock size={16} /> Weekly Timetable & Free Cabin Slots</h4>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Time Slot</th>
+                      <th>Class / Activity</th>
+                      <th>Location</th>
+                      <th>Cabin Availability</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timetables.filter(t => t.teacherId === selectedTeacherProfile.id).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#64748b', padding: '1rem' }}>
+                          No custom timetable slots added yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      timetables
+                        .filter(t => t.teacherId === selectedTeacherProfile.id)
+                        .map((slot) => (
+                          <tr key={slot.id}>
+                            <td><strong>{slot.day}</strong></td>
+                            <td>{slot.timeSlot}</td>
+                            <td>{slot.activity}</td>
+                            <td>{slot.location}</td>
+                            <td>
+                              {slot.isFree ? (
+                                <span className="badge badge-available">🟢 Free in Cabin</span>
+                              ) : (
+                                <span className="badge badge-in_class">🟡 In Class / Busy</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedTeacherProfile(null)}
+              >
+                Close Profile
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const t = selectedTeacherProfile;
+                  setSelectedTeacherProfile(null);
+                  handleOpenBooking(t);
+                }}
+              >
+                <Calendar size={16} /> Book Cabin Visit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Book Appointment Modal */}
       {selectedTeacherForBooking && (
         <div className="modal-overlay">
@@ -317,7 +451,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <div className="teacher-mini-summary">
                   <MapPin size={16} className="loc-icon" />
                   <span>
-                    Location: <strong>{selectedTeacherForBooking.blockName}</strong>, Room {selectedTeacherForBooking.roomNumber}, <strong>{selectedTeacherForBooking.cabinNumber}</strong>
+                    Location: <strong>{selectedTeacherForBooking.blockNumber}</strong>, Room {selectedTeacherForBooking.roomNumber}, <strong>{selectedTeacherForBooking.cabinNumber}</strong>
                   </span>
                 </div>
 
@@ -357,7 +491,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {selectedTeacherForBooking.subjects.map((sub, i) => (
                       <option key={i} value={sub}>{sub}</option>
                     ))}
-                    <option value="General Academic / Project Doubt">General Academic / Project Doubt</option>
+                    <option value="General Academic / Project Guidance">General Academic / Project Guidance</option>
                   </select>
                 </div>
 
@@ -366,7 +500,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <textarea
                     value={bookingReason}
                     onChange={(e) => setBookingReason(e.target.value)}
-                    placeholder="e.g. Want to clarify graph algorithms doubt for assignment & discuss major project proposal."
+                    placeholder="e.g. Want to clarify doubt regarding assignment and discuss project proposal."
                     className="form-control"
                     rows={4}
                     required
@@ -387,72 +521,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Timetable Modal */}
-      {selectedTeacherForTimetable && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-lg">
-            <div className="modal-header">
-              <div>
-                <h3>{selectedTeacherForTimetable.name} - Weekly Timetable</h3>
-                <p className="modal-sub">
-                  Location: {selectedTeacherForTimetable.blockName} • Room {selectedTeacherForTimetable.roomNumber} • {selectedTeacherForTimetable.cabinNumber}
-                </p>
-              </div>
-            </div>
-            <div className="modal-body">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Day</th>
-                    <th>Time Slot</th>
-                    <th>Class / Activity</th>
-                    <th>Location</th>
-                    <th>Cabin Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {timetables
-                    .filter(t => t.teacherId === selectedTeacherForTimetable.id)
-                    .map((slot) => (
-                      <tr key={slot.id}>
-                        <td><strong>{slot.day}</strong></td>
-                        <td>{slot.timeSlot}</td>
-                        <td>{slot.activity}</td>
-                        <td>{slot.location}</td>
-                        <td>
-                          {slot.isFree ? (
-                            <span className="badge badge-available">🟢 Free in Cabin</span>
-                          ) : (
-                            <span className="badge badge-in_class">🟡 In Class / Busy</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedTeacherForTimetable(null)}
-              >
-                Close
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  const t = selectedTeacherForTimetable;
-                  setSelectedTeacherForTimetable(null);
-                  handleOpenBooking(t);
-                }}
-              >
-                Book Appointment
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -594,6 +662,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
           gap: 1.5rem;
         }
+        .clickable-card {
+          cursor: pointer;
+        }
+        .card-click-area {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
         .teacher-card {
           background: #ffffff;
           border-radius: var(--radius-md);
@@ -608,6 +684,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         .teacher-card:hover {
           transform: translateY(-2px);
           box-shadow: var(--shadow-md);
+          border-color: var(--cu-red);
         }
         .card-top {
           display: flex;
@@ -742,6 +819,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           color: var(--cu-red);
           vertical-align: text-bottom;
         }
+        .inline-icon.red { color: var(--cu-red); }
         .badge-lg {
           padding: 0.4rem 0.9rem;
           font-size: 0.825rem;
@@ -795,6 +873,82 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           display: flex;
           align-items: center;
           gap: 0.4rem;
+        }
+
+        .profile-header-modal {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .modal-avatar {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--cu-red);
+        }
+        .modal-sub-role {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin-top: 0.2rem;
+        }
+        .modal-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+          margin-bottom: 1.25rem;
+        }
+        .info-box {
+          background: #f8fafc;
+          border: 1px solid var(--border-light);
+          padding: 1rem;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .info-label {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: var(--text-muted);
+        }
+        .loc-text {
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+        .contact-row {
+          display: flex;
+          gap: 1.5rem;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          font-size: 0.825rem;
+          color: #1e40af;
+          margin-bottom: 1.25rem;
+          flex-wrap: wrap;
+        }
+        .info-section {
+          margin-bottom: 1.25rem;
+        }
+        .section-title {
+          font-size: 0.95rem;
+          color: var(--text-main);
+          margin-bottom: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+        .subject-pill-lg {
+          background: #fff0f2;
+          color: var(--cu-red);
+          border: 1px solid rgba(200,16,46,0.2);
+          padding: 0.3rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.85rem;
+          font-weight: 600;
         }
 
         .modal-lg {

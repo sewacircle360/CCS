@@ -17,8 +17,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="header-container">
           {/* Logo & Branding */}
           <div className="brand-group">
-            <div className="cu-logo-badge">
-              <span className="cu-letters">CU</span>
+            <div className="cu-logo-img-wrapper">
+              <img src="/logo.png" alt="Chandigarh University Logo" className="cu-logo-img" />
             </div>
             <div className="brand-text">
               <div className="brand-title">
@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
         .header-top-bar {
           background: linear-gradient(135deg, #c8102e 0%, #990000 100%);
           color: #ffffff;
-          padding: 0.85rem 0;
+          padding: 0.75rem 0;
         }
         .header-container {
           max-width: 1320px;
@@ -88,21 +88,19 @@ export const Header: React.FC<HeaderProps> = ({
           align-items: center;
           gap: 1rem;
         }
-        .cu-logo-badge {
-          width: 44px;
-          height: 44px;
-          background: #ffffff;
-          border-radius: 10px;
+        .cu-logo-img-wrapper {
+          height: 48px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          background: #ffffff;
+          padding: 0.35rem 0.65rem;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        .cu-letters {
-          color: #c8102e;
-          font-weight: 900;
-          font-size: 1.35rem;
-          letter-spacing: -1px;
+        .cu-logo-img {
+          height: 100%;
+          width: auto;
+          object-fit: contain;
         }
         .brand-text {
           display: flex;
