@@ -25,8 +25,17 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('cu_ccs_teachers');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        const parsed: Teacher[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge official 114 faculty members if missing
+          const combined = [...parsed];
+          OFFICIAL_CU_FACULTY_LIST.forEach(f => {
+            if (!combined.some(c => c.empId.toLowerCase() === f.empId.toLowerCase() || c.email.toLowerCase() === f.email.toLowerCase())) {
+              combined.push(f);
+            }
+          });
+          return combined;
+        }
       } catch (e) {
         console.log('Error parsing teachers:', e);
       }
@@ -79,41 +88,42 @@ export const App: React.FC = () => {
 
         // Fetch Teachers from Supabase
         const { data: cloudTeachers } = await supabase.from('teachers').select('*');
-        if (cloudTeachers && cloudTeachers.length > 0) {
-          const mappedTeachers: Teacher[] = cloudTeachers.map(t => ({
-            id: t.id || `cu-${t.emp_id}`,
-            userId: t.user_id || '',
-            name: t.name,
-            empId: t.emp_id,
-            email: t.email,
-            phone: t.phone,
-            department: t.department,
-            designation: t.designation,
-            blockName: t.block_name || `Chandigarh University ${t.block_number}`,
-            blockNumber: t.block_number,
-            roomNumber: t.room_number,
-            cabinNumber: t.cabin_number,
-            subjects: t.subjects || ['Computer Science'],
-            status: (t.status || 'available') as TeacherStatus,
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-            verified: true,
-          }));
+        const mappedTeachers: Teacher[] = (cloudTeachers && cloudTeachers.length > 0)
+          ? cloudTeachers.map(t => ({
+              id: t.id || `cu-${t.emp_id}`,
+              userId: t.user_id || '',
+              name: t.name,
+              empId: t.emp_id,
+              email: t.email,
+              phone: t.phone,
+              department: t.department,
+              designation: t.designation,
+              blockName: t.block_name || `Chandigarh University ${t.block_number}`,
+              blockNumber: t.block_number,
+              roomNumber: t.room_number,
+              cabinNumber: t.cabin_number,
+              subjects: t.subjects || [],
+              status: (t.status || 'available') as TeacherStatus,
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+              verified: true,
+            }))
+          : [];
 
-          setTeachers(prev => {
-            const combined = [...mappedTeachers];
-            OFFICIAL_CU_FACULTY_LIST.forEach(f => {
-              if (!combined.some(c => c.email.toLowerCase() === f.email.toLowerCase() || c.empId === f.empId)) {
-                combined.push(f);
-              }
-            });
-            prev.forEach(p => {
-              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.empId === p.empId)) {
-                combined.push(p);
-              }
-            });
-            return combined;
+        setTeachers(prev => {
+          const combined = [...mappedTeachers];
+          // Always ensure all 114 official faculty from PDF are present
+          OFFICIAL_CU_FACULTY_LIST.forEach(f => {
+            if (!combined.some(c => c.email.toLowerCase() === f.email.toLowerCase() || c.empId.toLowerCase() === f.empId.toLowerCase())) {
+              combined.push(f);
+            }
           });
-        }
+          prev.forEach(p => {
+            if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.empId.toLowerCase() === p.empId.toLowerCase())) {
+              combined.push(p);
+            }
+          });
+          return combined;
+        });
 
         // Fetch Users from Supabase
         const { data: cloudUsers } = await supabase.from('users').select('*');
@@ -431,7 +441,7 @@ export const App: React.FC = () => {
         blockNumber: 'Block B3',
         roomNumber: '304 A',
         cabinNumber: 'Cabin 304 A',
-        subjects: ['Computer Science'],
+        subjects: [],
         status: 'available' as TeacherStatus,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
         designation: 'Faculty Member / Teacher',
