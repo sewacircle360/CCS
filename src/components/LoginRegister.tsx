@@ -372,8 +372,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   portalRole === 'admin'
                     ? "sewacircle360@gmail.com"
                     : portalRole === 'student'
-                    ? "e.g. 24bcs10812@cuchd.in"
-                    : "e.g. ad1.cse@cumail.in or gagandeep.e8657@cumail.in"
+                    ? "e.g. student@cuchd.in"
+                    : "e.g. teacher@cumail.in"
                 }
                 className="form-control"
                 required
@@ -430,7 +430,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                 type="text"
                 value={claimEcodeOrEmail}
                 onChange={(e) => handleCheckEcode(e.target.value)}
-                placeholder="e.g. 6220 or gagandeep.e8657@cumail.in"
+                placeholder="e.g. Ecode or teacher@cumail.in"
                 className="form-control"
                 required
               />
@@ -517,7 +517,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="email"
                   value={tEmail}
                   onChange={(e) => setTEmail(e.target.value)}
-                  placeholder="e.g. ad1.cse@cumail.in"
+                  placeholder="e.g. teacher@cumail.in"
                   className="form-control"
                   required
                 />
@@ -652,7 +652,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={sName}
                   onChange={(e) => setSName(e.target.value)}
-                  placeholder="e.g. DEEPAK"
+                  placeholder="e.g. Student Name"
                   className="form-control"
                   required
                 />
@@ -663,7 +663,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={sUid}
                   onChange={(e) => setSUid(e.target.value)}
-                  placeholder="e.g. 24BCS10812"
+                  placeholder="e.g. Student UID"
                   className="form-control"
                   required
                 />
@@ -677,7 +677,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="email"
                   value={sEmail}
                   onChange={(e) => setSEmail(e.target.value)}
-                  placeholder="e.g. 24bcs10812@cuchd.in"
+                  placeholder="e.g. student@cuchd.in"
                   className="form-control"
                   required
                 />
@@ -691,7 +691,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                     type={showStudentPassword ? "text" : "password"}
                     value={sPassword}
                     onChange={(e) => setSPassword(e.target.value)}
-                    placeholder="Set Password (e.g. Deep@123)"
+                    placeholder="Set Password"
                     className="form-control password-input"
                     required
                   />
