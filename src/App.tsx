@@ -27,7 +27,6 @@ export const App: React.FC = () => {
       try {
         const parsed: Teacher[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge official 114 faculty members if missing
           const combined = [...parsed];
           OFFICIAL_CU_FACULTY_LIST.forEach(f => {
             if (!combined.some(c => c.empId.toLowerCase() === f.empId.toLowerCase() || c.email.toLowerCase() === f.email.toLowerCase())) {
@@ -45,7 +44,15 @@ export const App: React.FC = () => {
 
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('cu_ccs_students');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed: Student[] = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.log('Error parsing students:', e);
+      }
+    }
+    return [];
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
@@ -76,10 +83,10 @@ export const App: React.FC = () => {
             phone: s.phone,
           }));
           setStudents(prev => {
-            const combined = [...mappedStudents];
-            prev.forEach(p => {
-              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.uid === p.uid)) {
-                combined.push(p);
+            const combined = [...prev];
+            mappedStudents.forEach(m => {
+              if (!combined.some(c => c.email.toLowerCase() === m.email.toLowerCase() || c.uid === m.uid)) {
+                combined.push(m);
               }
             });
             return combined;
@@ -88,42 +95,39 @@ export const App: React.FC = () => {
 
         // Fetch Teachers from Supabase
         const { data: cloudTeachers } = await supabase.from('teachers').select('*');
-        const mappedTeachers: Teacher[] = (cloudTeachers && cloudTeachers.length > 0)
-          ? cloudTeachers.map(t => ({
-              id: t.id || `cu-${t.emp_id}`,
-              userId: t.user_id || '',
-              name: t.name,
-              empId: t.emp_id,
-              email: t.email,
-              phone: t.phone,
-              department: t.department,
-              designation: t.designation,
-              blockName: t.block_name || `Chandigarh University ${t.block_number}`,
-              blockNumber: t.block_number,
-              roomNumber: t.room_number,
-              cabinNumber: t.cabin_number,
-              subjects: t.subjects || [],
-              status: (t.status || 'available') as TeacherStatus,
-              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-              verified: true,
-            }))
-          : [];
+        if (cloudTeachers && cloudTeachers.length > 0) {
+          const mappedTeachers: Teacher[] = cloudTeachers.map(t => ({
+            id: t.id || `cu-${t.emp_id}`,
+            userId: t.user_id || '',
+            name: t.name,
+            empId: t.emp_id,
+            email: t.email,
+            phone: t.phone,
+            department: t.department,
+            designation: t.designation,
+            blockName: t.block_name || `Chandigarh University ${t.block_number}`,
+            blockNumber: t.block_number,
+            roomNumber: t.room_number,
+            cabinNumber: t.cabin_number,
+            subjects: t.subjects || [],
+            status: (t.status || 'available') as TeacherStatus,
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            verified: true,
+          }));
 
-        setTeachers(prev => {
-          const combined = [...mappedTeachers];
-          // Always ensure all 114 official faculty from PDF are present
-          OFFICIAL_CU_FACULTY_LIST.forEach(f => {
-            if (!combined.some(c => c.email.toLowerCase() === f.email.toLowerCase() || c.empId.toLowerCase() === f.empId.toLowerCase())) {
-              combined.push(f);
-            }
+          setTeachers(prev => {
+            const combined = [...prev];
+            mappedTeachers.forEach(m => {
+              const idx = combined.findIndex(c => c.email.toLowerCase() === m.email.toLowerCase() || c.empId.toLowerCase() === m.empId.toLowerCase());
+              if (idx >= 0) {
+                combined[idx] = { ...combined[idx], ...m };
+              } else {
+                combined.push(m);
+              }
+            });
+            return combined;
           });
-          prev.forEach(p => {
-            if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.empId.toLowerCase() === p.empId.toLowerCase())) {
-              combined.push(p);
-            }
-          });
-          return combined;
-        });
+        }
 
         // Fetch Users from Supabase
         const { data: cloudUsers } = await supabase.from('users').select('*');
@@ -137,10 +141,10 @@ export const App: React.FC = () => {
             profileId: u.profile_id,
           }));
           setUsers(prev => {
-            const combined = [...mappedUsers];
-            prev.forEach(p => {
-              if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase())) {
-                combined.push(p);
+            const combined = [...prev];
+            mappedUsers.forEach(m => {
+              if (!combined.some(c => c.email.toLowerCase() === m.email.toLowerCase())) {
+                combined.push(m);
               }
             });
             return combined;
@@ -177,7 +181,7 @@ export const App: React.FC = () => {
 
     fetchCloudData();
 
-    // REALTIME SUBSCRIPTION FOR INSTANT LIVE UPDATES ACROSS ALL COMPUTERS/PHONES!
+    // REALTIME SUBSCRIPTION FOR INSTANT LIVE UPDATES
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public' }, () => {
@@ -204,9 +208,7 @@ export const App: React.FC = () => {
   }, [users]);
 
   useEffect(() => {
-    if (teachers && teachers.length > 0) {
-      localStorage.setItem('cu_ccs_teachers', JSON.stringify(teachers));
-    }
+    localStorage.setItem('cu_ccs_teachers', JSON.stringify(teachers));
   }, [teachers]);
 
   useEffect(() => {
@@ -230,7 +232,7 @@ export const App: React.FC = () => {
     setCurrentUser(null);
   };
 
-  // Register Handlers with Supabase Sync
+  // Register Handlers with Supabase & LocalStorage Sync
   const handleRegisterTeacher = async (
     teacherData: Omit<Teacher, 'id' | 'status' | 'verified'>,
     password: string
@@ -309,8 +311,19 @@ export const App: React.FC = () => {
       profileId: newStudId,
     };
 
-    setStudents(prev => [newStudent, ...prev]);
-    setUsers(prev => [newUser, ...prev]);
+    // Update state & Immediate LocalStorage Persist
+    setStudents(prev => {
+      const updated = [newStudent, ...prev];
+      localStorage.setItem('cu_ccs_students', JSON.stringify(updated));
+      return updated;
+    });
+
+    setUsers(prev => {
+      const updated = [newUser, ...prev];
+      localStorage.setItem('cu_ccs_users', JSON.stringify(updated));
+      return updated;
+    });
+
     setCurrentUser(newUser);
 
     // Sync to Supabase cloud
