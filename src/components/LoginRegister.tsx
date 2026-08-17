@@ -49,7 +49,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [sUid, setSUid] = useState('');
   const [sPhone, setSPhone] = useState('');
   const [sDept, setSDept] = useState('Computer Science & Engineering');
-  const [sSemester, setSSemester] = useState('4th Semester (2nd Year)');
+  const [sSemVal, setSSemVal] = useState('Semester 1');
+  const [sYearVal, setSYearVal] = useState('Year 1 (1st Year)');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,13 +124,16 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
       setErrorMessage('Please fill out all required fields.');
       return;
     }
+
+    const combinedSemester = `${sSemVal} (${sYearVal})`;
+
     onRegisterStudent({
       userId: '',
       name: sName,
       uid: sUid,
       email: sEmail,
       department: sDept,
-      semester: sSemester,
+      semester: combinedSemester,
       phone: sPhone || '+91 98222 00000',
     }, sPassword);
   };
@@ -463,15 +467,38 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   <option value="Business School (USB)">Management (USB)</option>
                 </select>
               </div>
+
+              {/* SEMESTER DROPDOWN (Sem 1 to 12) */}
               <div className="form-group flex-1">
-                <label>Semester / Academic Year</label>
-                <input
-                  type="text"
-                  value={sSemester}
-                  onChange={(e) => setSSemester(e.target.value)}
-                  placeholder="e.g. 6th Semester (3rd Year)"
+                <label>Select Semester *</label>
+                <select
+                  value={sSemVal}
+                  onChange={(e) => setSSemVal(e.target.value)}
                   className="form-control"
-                />
+                  required
+                >
+                  {Array.from({ length: 12 }, (_, i) => `Semester ${i + 1}`).map((sem, idx) => (
+                    <option key={idx} value={sem}>{sem}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ACADEMIC YEAR DROPDOWN (Year 1 to 6) */}
+              <div className="form-group flex-1">
+                <label>Academic Year *</label>
+                <select
+                  value={sYearVal}
+                  onChange={(e) => setSYearVal(e.target.value)}
+                  className="form-control"
+                  required
+                >
+                  <option value="Year 1 (1st Year)">Year 1 (1st Year)</option>
+                  <option value="Year 2 (2nd Year)">Year 2 (2nd Year)</option>
+                  <option value="Year 3 (3rd Year)">Year 3 (3rd Year)</option>
+                  <option value="Year 4 (4th Year)">Year 4 (4th Year)</option>
+                  <option value="Year 5 (5th Year)">Year 5 (5th Year)</option>
+                  <option value="Year 6 (6th Year)">Year 6 (6th Year)</option>
+                </select>
               </div>
             </div>
 
