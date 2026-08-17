@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Teacher, Student, UserRole } from '../types';
 import { ALL_BLOCK_CODES, TEACHER_ROLE_DESIGNATIONS } from '../mockData';
-import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Key, Eye, EyeOff } from 'lucide-react';
+import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Key, Eye, EyeOff, Send, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface LoginRegisterProps {
   users: User[];
@@ -21,30 +21,28 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   onRegisterStudent,
 }) => {
   const [portalRole, setPortalRole] = useState<UserRole>('student');
-  const [authMode, setAuthMode] = useState<'login' | 'claim' | 'register'>('login');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Password Visibility Toggles for ALL Password Fields
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showClaimPassword, setShowClaimPassword] = useState(false);
-  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
-  const [showStudentPassword, setShowStudentPassword] = useState(false);
+  // Password Visibility Toggles
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Login Form
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  // Unified Smart Auth State
+  const [identifierInput, setIdentifierInput] = useState(''); // Email or Ecode
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authStep, setAuthStep] = useState<'enter_id' | 'enter_password' | 'otp_verify' | 'set_new_password' | 'create_new_account'>('enter_id');
 
-  // Claim Faculty Profile Form (Using Ecode or Email)
-  const [claimEcodeOrEmail, setClaimEcodeOrEmail] = useState('');
-  const [claimPassword, setClaimPassword] = useState('');
+  // Matched State
   const [matchedTeacher, setMatchedTeacher] = useState<Teacher | null>(null);
+  const [matchedUser, setMatchedUser] = useState<User | null>(null);
 
-  // Teacher Register
+  // OTP Verification State
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [userEnteredOtp, setUserEnteredOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
+  // Teacher Registration Form State (If completely new)
   const [tName, setTName] = useState('');
-  const [tEmail, setTEmail] = useState('');
-  const [tPassword, setTPassword] = useState('');
-  const [tEmpId, setTEmpId] = useState('');
   const [tPhone, setTPhone] = useState('');
   const [tDept, setTDept] = useState('Computer Science & Engineering');
   const [tBlockNumber, setTBlockNumber] = useState('Block B3');
@@ -53,40 +51,142 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [tSubjects, setTSubjects] = useState('Computer Science');
   const [tDesignation, setTDesignation] = useState('Assistant Professor');
 
-  // Student Register
+  // Student Registration Form State
   const [sName, setSName] = useState('');
-  const [sEmail, setSEmail] = useState('');
-  const [sPassword, setSPassword] = useState('');
   const [sUid, setSUid] = useState('');
   const [sPhone, setSPhone] = useState('');
   const [sDept, setSDept] = useState('Computer Science & Engineering');
   const [sSemVal, setSSemVal] = useState('Semester 5');
   const [sYearVal, setSYearVal] = useState('Year 3 (3rd Year)');
 
-  // Helper for password validation (At least 6 chars, 1 uppercase, 1 lowercase, 1 symbol)
+  // Helper for password validation
   const validatePasswordStrength = (pwd: string): string | null => {
-    if (pwd.length < 6) {
-      return 'Password must be at least 6 characters long.';
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      return 'Password must contain at least 1 Uppercase letter (A-Z).';
-    }
-    if (!/[a-z]/.test(pwd)) {
-      return 'Password must contain at least 1 Lowercase letter (a-z).';
-    }
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) {
-      return 'Password must contain at least 1 Special Symbol (e.g. @, #, $, !).';
-    }
+    if (pwd.length < 6) return 'Password must be at least 6 characters long.';
+    if (!/[A-Z]/.test(pwd)) return 'Password must contain at least 1 Uppercase letter (A-Z).';
+    if (!/[a-z]/.test(pwd)) return 'Password must contain at least 1 Lowercase letter (a-z).';
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) return 'Password must contain at least 1 Special Symbol (e.g. @, #, $, !).';
     return null;
   };
 
+  // STEP 1: Handle Smart Identification (Check Ecode/Email)
+  const handleCheckIdentifier = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    const query = identifierInput.trim().toLowerCase();
+
+    if (!query) {
+      setErrorMessage('Please enter your Email Address or Employee Ecode.');
+      return;
+    }
+
+    // Admin Access Direct Check
+    if (portalRole === 'admin') {
+      if (query === 'sewacircle360@gmail.com') {
+        setAuthStep('enter_password');
+        return;
+      } else {
+        setErrorMessage('Invalid Admin Email Address.');
+        return;
+      }
+    }
+
+    // Check if account is ALREADY activated in users
+    const existingUser = users.find(
+      u => u.email.toLowerCase() === query || (portalRole === 'teacher' && u.profileId === `cu-${query}`)
+    );
+
+    if (existingUser) {
+      setMatchedUser(existingUser);
+      setAuthStep('enter_password');
+      return;
+    }
+
+    // If Teacher: Check in pre-loaded PDF faculty database
+    if (portalRole === 'teacher') {
+      const foundTeacher = teachers.find(
+        t => t.empId.toLowerCase() === query || t.email.toLowerCase() === query
+      );
+
+      if (foundTeacher) {
+        setMatchedTeacher(foundTeacher);
+        // Send OTP for security before password setup!
+        sendEmailOtp(foundTeacher.email);
+        return;
+      } else {
+        // Teacher not in PDF database -> Go to Create New Account
+        setMatchedTeacher(null);
+        setAuthStep('create_new_account');
+        return;
+      }
+    }
+
+    // If Student: If not registered -> Go to Create New Account
+    if (portalRole === 'student') {
+      setAuthStep('create_new_account');
+    }
+  };
+
+  // Generate 6-Digit Email OTP
+  const sendEmailOtp = (targetEmail: string) => {
+    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(randomOtp);
+    setOtpSent(true);
+    setAuthStep('otp_verify');
+    setSuccessMessage(`🔒 Security OTP Code sent to ${targetEmail}! (For Demo: Your OTP Code is ${randomOtp})`);
+  };
+
+  // STEP 2: Verify 6-Digit OTP
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    if (userEnteredOtp.trim() !== generatedOtp) {
+      setErrorMessage('Invalid 6-Digit OTP Code! Please check the code sent to your email.');
+      return;
+    }
+
+    setSuccessMessage('✓ OTP Code Verified Successfully! Set your account password below.');
+    setAuthStep('set_new_password');
+  };
+
+  // STEP 3: Complete Password Setup & Activation for Pre-Loaded Teacher
+  const handleSetNewPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    const pwdErr = validatePasswordStrength(passwordInput);
+    if (pwdErr) {
+      setErrorMessage(pwdErr);
+      return;
+    }
+
+    if (matchedTeacher) {
+      onRegisterTeacher({
+        userId: '',
+        name: matchedTeacher.name,
+        empId: matchedTeacher.empId,
+        email: matchedTeacher.email,
+        phone: matchedTeacher.phone,
+        department: matchedTeacher.department,
+        blockName: matchedTeacher.blockName,
+        blockNumber: matchedTeacher.blockNumber,
+        roomNumber: matchedTeacher.roomNumber,
+        cabinNumber: matchedTeacher.cabinNumber,
+        subjects: matchedTeacher.subjects,
+        avatar: matchedTeacher.avatar,
+        designation: matchedTeacher.designation,
+      }, passwordInput);
+    }
+  };
+
+  // STEP 4: Login Submit (Existing User)
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Admin Credentials validation check
     if (portalRole === 'admin') {
-      if (loginEmail.trim().toLowerCase() === 'sewacircle360@gmail.com' && loginPassword === 'Admin@123') {
+      if (identifierInput.trim().toLowerCase() === 'sewacircle360@gmail.com' && passwordInput === 'Admin@123') {
         const adminUser: User = {
           id: 'admin-master',
           email: 'sewacircle360@gmail.com',
@@ -97,120 +197,28 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
         onLoginSuccess(adminUser);
         return;
       } else {
-        setErrorMessage('Invalid Admin Credentials! Please check Email and Password.');
+        setErrorMessage('Invalid Admin Password!');
         return;
       }
     }
 
-    // Teacher or Student Login
-    const foundUser = users.find(
-      u => u.email.toLowerCase() === loginEmail.trim().toLowerCase() && u.role === portalRole
-    );
-
-    if (!foundUser) {
-      setErrorMessage(`No ${portalRole} account registered with email "${loginEmail}". Click "Activate Official Profile" or "New Registration"!`);
-      return;
+    if (matchedUser) {
+      if (matchedUser.password && matchedUser.password !== passwordInput) {
+        setErrorMessage('Incorrect password! Please try again.');
+        return;
+      }
+      onLoginSuccess(matchedUser);
     }
-
-    if (foundUser.password && foundUser.password !== loginPassword) {
-      setErrorMessage('Incorrect password! Please check and try again.');
-      return;
-    }
-
-    onLoginSuccess(foundUser);
   };
 
-  // Search for official pre-seeded profile by Ecode or Email
-  const handleCheckEcode = (val: string) => {
-    setClaimEcodeOrEmail(val);
-    setErrorMessage('');
-    const query = val.trim().toLowerCase();
-    if (!query) {
-      setMatchedTeacher(null);
-      return;
-    }
-    const found = teachers.find(
-      t => t.empId.toLowerCase() === query || t.email.toLowerCase() === query
-    );
-    setMatchedTeacher(found || null);
-  };
-
-  const handleClaimSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-
-    if (!matchedTeacher) {
-      setErrorMessage(`No pre-loaded CU Faculty profile found for "${claimEcodeOrEmail}". Please verify your Employee Ecode or Email.`);
-      return;
-    }
-
-    const pwdErr = validatePasswordStrength(claimPassword);
-    if (pwdErr) {
-      setErrorMessage(pwdErr);
-      return;
-    }
-
-    // Check if user already activated
-    const existingUser = users.find(u => u.email.toLowerCase() === matchedTeacher.email.toLowerCase());
-    if (existingUser) {
-      existingUser.password = claimPassword;
-      onLoginSuccess(existingUser);
-      return;
-    }
-
-    // Activate profile without creating duplicate teacher row!
-    onRegisterTeacher({
-      userId: '',
-      name: matchedTeacher.name,
-      empId: matchedTeacher.empId,
-      email: matchedTeacher.email,
-      phone: matchedTeacher.phone,
-      department: matchedTeacher.department,
-      blockName: matchedTeacher.blockName,
-      blockNumber: matchedTeacher.blockNumber,
-      roomNumber: matchedTeacher.roomNumber,
-      cabinNumber: matchedTeacher.cabinNumber,
-      subjects: matchedTeacher.subjects,
-      avatar: matchedTeacher.avatar,
-      designation: matchedTeacher.designation,
-    }, claimPassword);
-  };
-
+  // STEP 5: New Teacher Registration
   const handleRegisterTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    if (!tName || !tEmail || !tPassword || !tEmpId) {
-      setErrorMessage('Please fill out all required fields.');
-      return;
-    }
 
-    const pwdErr = validatePasswordStrength(tPassword);
+    const pwdErr = validatePasswordStrength(passwordInput);
     if (pwdErr) {
       setErrorMessage(pwdErr);
-      return;
-    }
-
-    // Smart check: If teacher Ecode or Email already exists in PDF dataset, match and activate instead of creating duplicate!
-    const preExisting = teachers.find(
-      t => t.empId.toLowerCase() === tEmpId.trim().toLowerCase() || t.email.toLowerCase() === tEmail.trim().toLowerCase()
-    );
-
-    if (preExisting) {
-      onRegisterTeacher({
-        userId: '',
-        name: preExisting.name,
-        empId: preExisting.empId,
-        email: preExisting.email,
-        phone: tPhone || preExisting.phone,
-        department: preExisting.department,
-        blockName: preExisting.blockName,
-        blockNumber: preExisting.blockNumber,
-        roomNumber: preExisting.roomNumber,
-        cabinNumber: preExisting.cabinNumber,
-        subjects: preExisting.subjects,
-        avatar: preExisting.avatar,
-        designation: preExisting.designation,
-      }, tPassword);
       return;
     }
 
@@ -218,8 +226,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     onRegisterTeacher({
       userId: '',
       name: tName,
-      empId: tEmpId,
-      email: tEmail,
+      empId: identifierInput,
+      email: identifierInput.includes('@') ? identifierInput : `${identifierInput}@cumail.in`,
       phone: tPhone || '+91 98765 00000',
       department: tDept,
       blockName: `Chandigarh University ${tBlockNumber}`,
@@ -229,18 +237,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
       subjects: subjectsArray,
       avatar: '',
       designation: tDesignation,
-    }, tPassword);
+    }, passwordInput);
   };
 
+  // STEP 6: New Student Registration
   const handleRegisterStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    if (!sName || !sEmail || !sPassword || !sUid) {
-      setErrorMessage('Please fill out all required fields.');
-      return;
-    }
 
-    const pwdErr = validatePasswordStrength(sPassword);
+    const pwdErr = validatePasswordStrength(passwordInput);
     if (pwdErr) {
       setErrorMessage(pwdErr);
       return;
@@ -251,12 +256,23 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     onRegisterStudent({
       userId: '',
       name: sName,
-      uid: sUid,
-      email: sEmail,
+      uid: sUid || identifierInput,
+      email: identifierInput.includes('@') ? identifierInput : `${identifierInput}@cuchd.in`,
       department: sDept,
       semester: combinedSemester,
       phone: sPhone || '+91 98222 00000',
-    }, sPassword);
+    }, passwordInput);
+  };
+
+  const handleResetForm = () => {
+    setAuthStep('enter_id');
+    setIdentifierInput('');
+    setPasswordInput('');
+    setUserEnteredOtp('');
+    setMatchedTeacher(null);
+    setMatchedUser(null);
+    setErrorMessage('');
+    setSuccessMessage('');
   };
 
   return (
@@ -273,11 +289,11 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </div>
         </div>
 
-        {/* Portal Switcher Tabs */}
+        {/* Role Switcher Tabs */}
         <div className="portal-tabs">
           <button
             className={`portal-tab ${portalRole === 'student' ? 'active' : ''}`}
-            onClick={() => { setPortalRole('student'); setAuthMode('login'); setErrorMessage(''); }}
+            onClick={() => { setPortalRole('student'); handleResetForm(); }}
           >
             <GraduationCap size={18} />
             <span>Student</span>
@@ -285,7 +301,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
           <button
             className={`portal-tab ${portalRole === 'teacher' ? 'active' : ''}`}
-            onClick={() => { setPortalRole('teacher'); setAuthMode('login'); setErrorMessage(''); }}
+            onClick={() => { setPortalRole('teacher'); handleResetForm(); }}
           >
             <UserCheck size={18} />
             <span>Teacher / Faculty</span>
@@ -293,55 +309,14 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
           <button
             className={`portal-tab ${portalRole === 'admin' ? 'active' : ''}`}
-            onClick={() => { setPortalRole('admin'); setAuthMode('login'); setErrorMessage(''); }}
+            onClick={() => { setPortalRole('admin'); handleResetForm(); }}
           >
             <Shield size={18} />
             <span>Admin</span>
           </button>
         </div>
 
-        {/* Mode Toggle (Login vs Claim vs Register) */}
-        {portalRole === 'teacher' && (
-          <div className="auth-mode-toggle">
-            <button
-              className={`mode-btn ${authMode === 'login' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('login'); setErrorMessage(''); }}
-            >
-              Sign In
-            </button>
-            <button
-              className={`mode-btn ${authMode === 'claim' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('claim'); setErrorMessage(''); }}
-            >
-              ⚡ Activate Official Profile
-            </button>
-            <button
-              className={`mode-btn ${authMode === 'register' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('register'); setErrorMessage(''); }}
-            >
-              New Registration
-            </button>
-          </div>
-        )}
-
-        {portalRole === 'student' && (
-          <div className="auth-mode-toggle">
-            <button
-              className={`mode-btn ${authMode === 'login' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('login'); setErrorMessage(''); }}
-            >
-              Sign In to Account
-            </button>
-            <button
-              className={`mode-btn ${authMode === 'register' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('register'); setErrorMessage(''); }}
-            >
-              New Registration
-            </button>
-          </div>
-        )}
-
-        {/* Error Alert */}
+        {/* Alerts */}
         {errorMessage && (
           <div className="alert-box alert-error">
             <AlertCircle size={18} />
@@ -349,7 +324,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </div>
         )}
 
-        {/* Success Alert */}
         {successMessage && (
           <div className="alert-box alert-success">
             <CheckCircle2 size={18} />
@@ -357,51 +331,61 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </div>
         )}
 
-        {/* FORM 1: LOGIN FORM */}
-        {authMode === 'login' && (
-          <form onSubmit={handleLoginSubmit} className="auth-form">
+        {/* UNIFIED STEP 1: ENTER EMAIL OR ECODE */}
+        {authStep === 'enter_id' && (
+          <form onSubmit={handleCheckIdentifier} className="auth-form">
             <div className="form-group">
               <label>
-                <Mail size={16} /> Email Address / Ecode:
+                <Mail size={16} /> Enter Official Email Address or Employee Ecode:
               </label>
               <input
                 type="text"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
+                value={identifierInput}
+                onChange={(e) => setIdentifierInput(e.target.value)}
                 placeholder={
                   portalRole === 'admin'
                     ? "sewacircle360@gmail.com"
-                    : portalRole === 'student'
-                    ? "e.g. student@cuchd.in"
-                    : "e.g. teacher@cumail.in"
+                    : portalRole === 'teacher'
+                    ? "e.g. 6220, 8657, 12999 or teacher@cumail.in"
+                    : "e.g. 24BCS10812 or student@cuchd.in"
                 }
                 className="form-control"
                 required
               />
             </div>
 
-            {/* LOGIN PASSWORD WITH EYE TOGGLE */}
+            <button type="submit" className="btn btn-primary btn-block">
+              <span>Continue & Verify Account</span>
+              <ArrowRight size={18} />
+            </button>
+          </form>
+        )}
+
+        {/* UNIFIED STEP 2: ENTER PASSWORD FOR EXISTING ACTIVATED USER */}
+        {authStep === 'enter_password' && (
+          <form onSubmit={handleLoginSubmit} className="auth-form">
+            <div className="user-found-notice">
+              <CheckCircle2 size={18} className="text-green" />
+              <span>Welcome Back! Account found for <strong>{identifierInput}</strong>.</span>
+            </div>
+
             <div className="form-group">
-              <label>
-                <Lock size={16} /> Password:
-              </label>
+              <label><Lock size={16} /> Enter Your Password:</label>
               <div className="password-input-wrapper">
                 <input
-                  type={showLoginPassword ? "text" : "password"}
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter password"
+                  type={showPassword ? "text" : "password"}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter your password"
                   className="form-control password-input"
                   required
                 />
                 <button
                   type="button"
                   className="password-toggle-btn"
-                  onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  title={showLoginPassword ? "Hide Password" : "Show Password"}
-                  aria-label="Toggle Password Visibility"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -410,55 +394,70 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               <span>Sign In to {portalRole.toUpperCase()} Dashboard</span>
               <ArrowRight size={18} />
             </button>
+
+            <button type="button" className="btn btn-secondary btn-block" onClick={handleResetForm}>
+              Back to Start
+            </button>
           </form>
         )}
 
-        {/* FORM 2: CLAIM / ACTIVATE PRE-LOADED CU FACULTY PROFILE */}
-        {authMode === 'claim' && portalRole === 'teacher' && (
-          <form onSubmit={handleClaimSubmit} className="auth-form">
-            <div className="claim-intro-card">
-              <Sparkles size={18} className="text-red" />
+        {/* UNIFIED STEP 3: OTP VERIFICATION FOR OFFICIAL FACULTY PROFILE */}
+        {authStep === 'otp_verify' && matchedTeacher && (
+          <form onSubmit={handleVerifyOtp} className="auth-form">
+            <div className="matched-card">
+              <ShieldCheck size={24} className="text-green" />
               <div>
-                <strong>Activate Your Official CU Faculty Profile</strong>
-                <p>Enter your Employee Ecode (e.g. <code>6220</code>, <code>8657</code>, <code>12999</code>) or official email to claim your pre-seeded cabin profile.</p>
+                <div className="matched-name">{matchedTeacher.name} (Ecode: {matchedTeacher.empId})</div>
+                <div className="matched-sub">{matchedTeacher.designation} • {matchedTeacher.blockNumber}, Room {matchedTeacher.roomNumber}</div>
               </div>
             </div>
 
-            <div className="form-group">
-              <label><Key size={16} /> Enter Employee Ecode or Email Address *</label>
+            <div className="otp-box-card">
+              <label><Send size={16} /> Enter 6-Digit Email Security OTP *</label>
               <input
                 type="text"
-                value={claimEcodeOrEmail}
-                onChange={(e) => handleCheckEcode(e.target.value)}
-                placeholder="e.g. Ecode or teacher@cumail.in"
-                className="form-control"
+                value={userEnteredOtp}
+                onChange={(e) => setUserEnteredOtp(e.target.value.trim())}
+                placeholder="Enter 6-Digit OTP (e.g. 482910)"
+                className="form-control otp-input"
+                maxLength={6}
                 required
               />
+              <div className="otp-resend-row">
+                <button type="button" className="btn-link" onClick={() => sendEmailOtp(matchedTeacher.email)}>
+                  <RefreshCw size={14} /> Resend OTP Code
+                </button>
+              </div>
             </div>
 
-            {/* Matched Profile Preview */}
-            {matchedTeacher ? (
-              <div className="matched-card">
-                <CheckCircle2 size={20} className="text-green" />
-                <div>
-                  <div className="matched-name">{matchedTeacher.name} (Ecode: {matchedTeacher.empId})</div>
-                  <div className="matched-sub">{matchedTeacher.designation} • {matchedTeacher.blockNumber}, Room {matchedTeacher.roomNumber} ({matchedTeacher.cabinNumber})</div>
-                </div>
-              </div>
-            ) : claimEcodeOrEmail.length > 2 && (
-              <div className="searching-hint">
-                Searching official CU faculty database... Try Ecode <code>6220</code>, <code>8657</code>, <code>12999</code>, <code>12830</code>, <code>5922</code>
-              </div>
-            )}
+            <button type="submit" className="btn btn-primary btn-block">
+              Verify OTP Code
+            </button>
 
-            {/* CLAIM PASSWORD WITH EYE TOGGLE */}
+            <button type="button" className="btn btn-secondary btn-block" onClick={handleResetForm}>
+              Back to Start
+            </button>
+          </form>
+        )}
+
+        {/* UNIFIED STEP 4: SET NEW PASSWORD AFTER OTP VERIFICATION */}
+        {authStep === 'set_new_password' && (
+          <form onSubmit={handleSetNewPassword} className="auth-form">
+            <div className="matched-card">
+              <CheckCircle2 size={24} className="text-green" />
+              <div>
+                <div className="matched-name">Verified: {matchedTeacher?.name}</div>
+                <div className="matched-sub">Set your password below to activate your official cabin profile.</div>
+              </div>
+            </div>
+
             <div className="form-group">
-              <label><Lock size={16} /> Set Password for Your Account *</label>
+              <label><Lock size={16} /> Set Account Password *</label>
               <div className="password-input-wrapper">
                 <input
-                  type={showClaimPassword ? "text" : "password"}
-                  value={claimPassword}
-                  onChange={(e) => setClaimPassword(e.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="Set password (min 6 chars, 1 Big, 1 small, 1 symbol)"
                   className="form-control password-input"
                   required
@@ -466,14 +465,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                 <button
                   type="button"
                   className="password-toggle-btn"
-                  onClick={() => setShowClaimPassword(!showClaimPassword)}
-                  title={showClaimPassword ? "Hide Password" : "Show Password"}
-                  aria-label="Toggle Password Visibility"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showClaimPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <small className="pwd-rule-text">Password requires: min 6 chars, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol (@,#,$,etc.)</small>
+              <small className="pwd-rule-text">Rules: Min 6 chars, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol.</small>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block">
@@ -482,287 +479,217 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </form>
         )}
 
-        {/* FORM 3: TEACHER REGISTER */}
-        {authMode === 'register' && portalRole === 'teacher' && (
-          <form onSubmit={handleRegisterTeacherSubmit} className="auth-form">
-            <div className="form-row">
-              <div className="form-group flex-2">
-                <label>Full Name *</label>
-                <input
-                  type="text"
-                  value={tName}
-                  onChange={(e) => setTName(e.target.value)}
-                  placeholder="e.g. Dr. Sandeep Singh Kang"
-                  className="form-control"
-                  required
-                />
-              </div>
-              <div className="form-group flex-1">
-                <label>Employee Ecode *</label>
-                <input
-                  type="text"
-                  value={tEmpId}
-                  onChange={(e) => setTEmpId(e.target.value)}
-                  placeholder="e.g. 6220"
-                  className="form-control"
-                  required
-                />
-              </div>
+        {/* UNIFIED STEP 5: CREATE NEW ACCOUNT (IF NOT IN DATABASE) */}
+        {authStep === 'create_new_account' && (
+          <div>
+            <div className="new-account-banner">
+              <Sparkles size={16} />
+              <span>No pre-loaded profile found for <strong>{identifierInput}</strong>. Complete registration below to create your account!</span>
             </div>
 
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>Email Address *</label>
-                <input
-                  type="email"
-                  value={tEmail}
-                  onChange={(e) => setTEmail(e.target.value)}
-                  placeholder="e.g. teacher@cumail.in"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              {/* TEACHER REGISTER PASSWORD WITH EYE TOGGLE */}
-              <div className="form-group flex-1">
-                <label>Account Password *</label>
-                <div className="password-input-wrapper">
-                  <input
-                    type={showTeacherPassword ? "text" : "password"}
-                    value={tPassword}
-                    onChange={(e) => setTPassword(e.target.value)}
-                    placeholder="Set Password"
-                    className="form-control password-input"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowTeacherPassword(!showTeacherPassword)}
-                    title={showTeacherPassword ? "Hide Password" : "Show Password"}
-                    aria-label="Toggle Password Visibility"
-                  >
-                    {showTeacherPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+            {portalRole === 'teacher' ? (
+              <form onSubmit={handleRegisterTeacherSubmit} className="auth-form">
+                <div className="form-row">
+                  <div className="form-group flex-2">
+                    <label>Full Name *</label>
+                    <input
+                      type="text"
+                      value={tName}
+                      onChange={(e) => setTName(e.target.value)}
+                      placeholder="e.g. Dr. Faculty Name"
+                      className="form-control"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-            <small className="pwd-rule-text" style={{ marginTop: '-0.5rem' }}>Password rules: At least 6 characters, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol.</small>
 
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>Department</label>
-                <select
-                  value={tDept}
-                  onChange={(e) => setTDept(e.target.value)}
-                  className="form-control"
-                >
-                  <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-                  <option value="Artificial Intelligence & Data Science">AI & Data Science</option>
-                  <option value="Computer Applications">Computer Applications</option>
-                  <option value="Electronics & Communication">ECE</option>
-                  <option value="Business School (USB)">Management (USB)</option>
-                  <option value="Mechanical Engineering">Mechanical Engineering</option>
-                </select>
-              </div>
-
-              <div className="form-group flex-1">
-                <label>Faculty Role / Designation *</label>
-                <select
-                  value={tDesignation}
-                  onChange={(e) => setTDesignation(e.target.value)}
-                  className="form-control"
-                  required
-                >
-                  {TEACHER_ROLE_DESIGNATIONS.map((roleOpt, idx) => (
-                    <option key={idx} value={roleOpt}>{roleOpt}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="location-section-title">
-              📍 Cabin Location & Campus Block (A1-A3, B1-B4, C1-C3, D1-D8)
-            </div>
-
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>Select CU Campus Block *</label>
-                <select
-                  value={tBlockNumber}
-                  onChange={(e) => setTBlockNumber(e.target.value)}
-                  className="form-control"
-                  required
-                >
-                  {ALL_BLOCK_CODES.map((blkCode, idx) => (
-                    <option key={idx} value={blkCode}>{blkCode}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group flex-1">
-                <label>Room Number</label>
-                <input
-                  type="text"
-                  value={tRoomNumber}
-                  onChange={(e) => setTRoomNumber(e.target.value)}
-                  placeholder="e.g. 304 A"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              <div className="form-group flex-1">
-                <label>Cabin Number</label>
-                <input
-                  type="text"
-                  value={tCabinNumber}
-                  onChange={(e) => setTCabinNumber(e.target.value)}
-                  placeholder="e.g. Cabin 304 A"
-                  className="form-control"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Subjects Taught (Comma Separated)</label>
-              <input
-                type="text"
-                value={tSubjects}
-                onChange={(e) => setTSubjects(e.target.value)}
-                placeholder="e.g. Data Structures, Operating Systems, Machine Learning"
-                className="form-control"
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-block">
-              Complete Teacher Registration
-            </button>
-          </form>
-        )}
-
-        {/* FORM 4: STUDENT REGISTER */}
-        {authMode === 'register' && portalRole === 'student' && (
-          <form onSubmit={handleRegisterStudentSubmit} className="auth-form">
-            <div className="form-row">
-              <div className="form-group flex-2">
-                <label>Student Full Name *</label>
-                <input
-                  type="text"
-                  value={sName}
-                  onChange={(e) => setSName(e.target.value)}
-                  placeholder="e.g. Student Name"
-                  className="form-control"
-                  required
-                />
-              </div>
-              <div className="form-group flex-1">
-                <label>Student UID / Roll No *</label>
-                <input
-                  type="text"
-                  value={sUid}
-                  onChange={(e) => setSUid(e.target.value)}
-                  placeholder="e.g. Student UID"
-                  className="form-control"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>Email Address *</label>
-                <input
-                  type="email"
-                  value={sEmail}
-                  onChange={(e) => setSEmail(e.target.value)}
-                  placeholder="e.g. student@cuchd.in"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              {/* STUDENT REGISTER PASSWORD WITH EYE TOGGLE */}
-              <div className="form-group flex-1">
-                <label>Password *</label>
-                <div className="password-input-wrapper">
-                  <input
-                    type={showStudentPassword ? "text" : "password"}
-                    value={sPassword}
-                    onChange={(e) => setSPassword(e.target.value)}
-                    placeholder="Set Password"
-                    className="form-control password-input"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowStudentPassword(!showStudentPassword)}
-                    title={showStudentPassword ? "Hide Password" : "Show Password"}
-                    aria-label="Toggle Password Visibility"
-                  >
-                    {showStudentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                <div className="form-group">
+                  <label><Lock size={16} /> Set Account Password *</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="Set Password"
+                      className="form-control password-input"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <small className="pwd-rule-text" style={{ marginTop: '-0.5rem' }}>Password rules: Min 6 characters, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol (@, #, $).</small>
 
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>Department</label>
-                <select
-                  value={sDept}
-                  onChange={(e) => setSDept(e.target.value)}
-                  className="form-control"
-                >
-                  <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-                  <option value="Artificial Intelligence & Data Science">AI & Data Science</option>
-                  <option value="Computer Applications">Computer Applications</option>
-                  <option value="Electronics & Communication">ECE</option>
-                  <option value="Business School (USB)">Management (USB)</option>
-                </select>
-              </div>
+                <div className="form-row">
+                  <div className="form-group flex-1">
+                    <label>Department</label>
+                    <select
+                      value={tDept}
+                      onChange={(e) => setTDept(e.target.value)}
+                      className="form-control"
+                    >
+                      <option value="Computer Science & Engineering">Computer Science & Engineering</option>
+                      <option value="Artificial Intelligence & Data Science">AI & Data Science</option>
+                      <option value="Computer Applications">Computer Applications</option>
+                    </select>
+                  </div>
 
-              {/* SEMESTER DROPDOWN (Sem 1 to 12) */}
-              <div className="form-group flex-1">
-                <label>Select Semester *</label>
-                <select
-                  value={sSemVal}
-                  onChange={(e) => setSSemVal(e.target.value)}
-                  className="form-control"
-                  required
-                >
-                  {Array.from({ length: 12 }, (_, i) => `Semester ${i + 1}`).map((sem, idx) => (
-                    <option key={idx} value={sem}>{sem}</option>
-                  ))}
-                </select>
-              </div>
+                  <div className="form-group flex-1">
+                    <label>Faculty Role / Designation *</label>
+                    <select
+                      value={tDesignation}
+                      onChange={(e) => setTDesignation(e.target.value)}
+                      className="form-control"
+                      required
+                    >
+                      {TEACHER_ROLE_DESIGNATIONS.map((roleOpt, idx) => (
+                        <option key={idx} value={roleOpt}>{roleOpt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-              {/* ACADEMIC YEAR DROPDOWN (Year 1 to 6) */}
-              <div className="form-group flex-1">
-                <label>Academic Year *</label>
-                <select
-                  value={sYearVal}
-                  onChange={(e) => setSYearVal(e.target.value)}
-                  className="form-control"
-                  required
-                >
-                  <option value="Year 1 (1st Year)">Year 1 (1st Year)</option>
-                  <option value="Year 2 (2nd Year)">Year 2 (2nd Year)</option>
-                  <option value="Year 3 (3rd Year)">Year 3 (3rd Year)</option>
-                  <option value="Year 4 (4th Year)">Year 4 (4th Year)</option>
-                  <option value="Year 5 (5th Year)">Year 5 (5th Year)</option>
-                  <option value="Year 6 (6th Year)">Year 6 (6th Year)</option>
-                </select>
-              </div>
-            </div>
+                <div className="location-section-title">
+                  📍 Cabin Location & Campus Block
+                </div>
 
-            <button type="submit" className="btn btn-primary btn-block">
-              Register Student Account
+                <div className="form-row">
+                  <div className="form-group flex-1">
+                    <label>Select CU Block *</label>
+                    <select
+                      value={tBlockNumber}
+                      onChange={(e) => setTBlockNumber(e.target.value)}
+                      className="form-control"
+                      required
+                    >
+                      {ALL_BLOCK_CODES.map((blkCode, idx) => (
+                        <option key={idx} value={blkCode}>{blkCode}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group flex-1">
+                    <label>Room Number</label>
+                    <input
+                      type="text"
+                      value={tRoomNumber}
+                      onChange={(e) => setTRoomNumber(e.target.value)}
+                      placeholder="e.g. 304 A"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group flex-1">
+                    <label>Cabin Number</label>
+                    <input
+                      type="text"
+                      value={tCabinNumber}
+                      onChange={(e) => setTCabinNumber(e.target.value)}
+                      placeholder="e.g. Cabin 304 A"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary btn-block">
+                  Complete Registration & Sign In
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegisterStudentSubmit} className="auth-form">
+                <div className="form-row">
+                  <div className="form-group flex-2">
+                    <label>Student Full Name *</label>
+                    <input
+                      type="text"
+                      value={sName}
+                      onChange={(e) => setSName(e.target.value)}
+                      placeholder="e.g. DEEPAK"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                  <div className="form-group flex-1">
+                    <label>Student UID *</label>
+                    <input
+                      type="text"
+                      value={sUid}
+                      onChange={(e) => setSUid(e.target.value)}
+                      placeholder="e.g. 24BCS10812"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label><Lock size={16} /> Set Account Password *</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="Set Password"
+                      className="form-control password-input"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group flex-1">
+                    <label>Semester *</label>
+                    <select
+                      value={sSemVal}
+                      onChange={(e) => setSSemVal(e.target.value)}
+                      className="form-control"
+                      required
+                    >
+                      {Array.from({ length: 12 }, (_, i) => `Semester ${i + 1}`).map((sem, idx) => (
+                        <option key={idx} value={sem}>{sem}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group flex-1">
+                    <label>Academic Year *</label>
+                    <select
+                      value={sYearVal}
+                      onChange={(e) => setSYearVal(e.target.value)}
+                      className="form-control"
+                      required
+                    >
+                      <option value="Year 1 (1st Year)">Year 1 (1st Year)</option>
+                      <option value="Year 2 (2nd Year)">Year 2 (2nd Year)</option>
+                      <option value="Year 3 (3rd Year)">Year 3 (3rd Year)</option>
+                      <option value="Year 4 (4th Year)">Year 4 (4th Year)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary btn-block">
+                  Register Student Account
+                </button>
+              </form>
+            )}
+
+            <button type="button" className="btn btn-secondary btn-block" style={{ marginTop: '0.75rem' }} onClick={handleResetForm}>
+              Back to Start
             </button>
-          </form>
+          </div>
         )}
       </div>
 
@@ -842,27 +769,64 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
           font-weight: 700;
         }
-        .auth-mode-toggle {
+
+        .user-found-notice {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          font-size: 0.875rem;
           display: flex;
-          border-bottom: 1.5px solid var(--border-light);
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .new-account-banner {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          color: #1e40af;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
           margin-bottom: 1.25rem;
         }
-        .mode-btn {
-          flex: 1;
-          border: none;
-          background: transparent;
-          padding: 0.65rem 0;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--text-muted);
-          cursor: pointer;
-          border-bottom: 3px solid transparent;
-          transition: all 0.2s;
+
+        .otp-box-card {
+          background: #f8fafc;
+          border: 1.5px solid #bfdbfe;
+          padding: 1.25rem;
+          border-radius: 10px;
+          margin-bottom: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
-        .mode-btn.active {
+        .otp-input {
+          font-size: 1.3rem !important;
+          letter-spacing: 0.35rem;
+          text-align: center;
+          font-weight: 800;
           color: var(--cu-red);
-          border-bottom-color: var(--cu-red);
-          font-weight: 700;
+        }
+        .otp-resend-row {
+          display: flex;
+          justify-content: flex-end;
+        }
+        .btn-link {
+          background: transparent;
+          border: none;
+          color: #2563eb;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
         }
 
         .alert-box {
@@ -885,6 +849,45 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           color: #059669;
         }
 
+        .matched-card {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+        }
+        .matched-name {
+          font-weight: 700;
+          color: #065f46;
+          font-size: 0.9rem;
+        }
+        .matched-sub {
+          font-size: 0.8rem;
+          color: #047857;
+        }
+
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.1rem;
+        }
+        .btn-block {
+          width: 100%;
+          padding: 0.85rem 1rem;
+          font-size: 0.95rem;
+          margin-top: 0.25rem;
+        }
+        .location-section-title {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--cu-red);
+          background: var(--cu-red-light);
+          padding: 0.4rem 0.75rem;
+          border-radius: 6px;
+        }
         .password-input-wrapper {
           position: relative;
           display: flex;
@@ -920,62 +923,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           color: var(--text-muted);
           display: block;
           margin-top: 0.25rem;
-        }
-
-        .claim-intro-card {
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
-          padding: 0.85rem;
-          border-radius: 8px;
-          display: flex;
-          gap: 0.75rem;
-          font-size: 0.825rem;
-          color: #1e40af;
-          margin-bottom: 1rem;
-        }
-        .matched-card {
-          background: #ecfdf5;
-          border: 1px solid #a7f3d0;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1rem;
-        }
-        .matched-name {
-          font-weight: 700;
-          color: #065f46;
-          font-size: 0.9rem;
-        }
-        .matched-sub {
-          font-size: 0.8rem;
-          color: #047857;
-        }
-        .searching-hint {
-          font-size: 0.775rem;
-          color: var(--text-muted);
-          margin-bottom: 1rem;
-        }
-
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.1rem;
-        }
-        .btn-block {
-          width: 100%;
-          padding: 0.85rem 1rem;
-          font-size: 0.95rem;
-          margin-top: 0.5rem;
-        }
-        .location-section-title {
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: var(--cu-red);
-          background: var(--cu-red-light);
-          padding: 0.4rem 0.75rem;
-          border-radius: 6px;
         }
       `}</style>
     </div>
