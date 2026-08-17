@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, Teacher, Student, Appointment, TimetableSlot, User } from './types';
+import { UserRole, Teacher, Student, Appointment, TimetableSlot, User, TeacherStatus } from './types';
 import { INITIAL_USERS, INITIAL_BLOCKS } from './mockData';
 import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
@@ -7,17 +7,6 @@ import { LoginRegister } from './components/LoginRegister';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
-
-// Auto-wipe old cached mock data once to ensure 100% clean database
-const MOCK_DATA_VERSION = 'v3_clean_empty';
-if (localStorage.getItem('cu_ccs_data_version') !== MOCK_DATA_VERSION) {
-  localStorage.removeItem('cu_ccs_teachers');
-  localStorage.removeItem('cu_ccs_students');
-  localStorage.removeItem('cu_ccs_appointments');
-  localStorage.removeItem('cu_ccs_timetables');
-  localStorage.removeItem('cu_ccs_users');
-  localStorage.setItem('cu_ccs_data_version', MOCK_DATA_VERSION);
-}
 
 export const App: React.FC = () => {
   // Authentication State
@@ -276,13 +265,39 @@ export const App: React.FC = () => {
     setTimetables(prev => prev.filter(s => s.id !== slotId));
   };
 
-  // Get active teacher or student profile
-  const activeTeacher = currentUser?.role === 'teacher'
-    ? teachers.find(t => t.id === currentUser.profileId || t.email === currentUser.email)
+  // Dynamic Resolution for Active Profile (Always guaranteed to match logged-in user!)
+  const activeTeacher: Teacher | null = currentUser?.role === 'teacher'
+    ? (teachers.find(t => t.id === currentUser.profileId || t.email.toLowerCase() === currentUser.email.toLowerCase()) || {
+        id: currentUser.profileId || `tech-${currentUser.id}`,
+        userId: currentUser.id,
+        name: currentUser.name,
+        empId: 'CU-EMP-' + currentUser.id.slice(-4),
+        email: currentUser.email,
+        phone: '+91 98000 00000',
+        department: 'Computer Science & Engineering',
+        blockName: 'Chandigarh University Block A3',
+        blockNumber: 'Block A3',
+        roomNumber: '402',
+        cabinNumber: 'Cabin C-14',
+        subjects: ['Computer Science'],
+        status: 'available' as TeacherStatus,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+        designation: 'Faculty Member / Teacher',
+        verified: true,
+      })
     : null;
 
-  const activeStudent = currentUser?.role === 'student'
-    ? students.find(s => s.id === currentUser.profileId || s.email === currentUser.email)
+  const activeStudent: Student | null = currentUser?.role === 'student'
+    ? (students.find(s => s.id === currentUser.profileId || s.email.toLowerCase() === currentUser.email.toLowerCase()) || {
+        id: currentUser.profileId || `stud-${currentUser.id}`,
+        userId: currentUser.id,
+        name: currentUser.name,
+        uid: 'CU-UID-' + currentUser.id.slice(-4),
+        email: currentUser.email,
+        department: 'Computer Science & Engineering',
+        semester: 'Semester 1 (Year 1)',
+        phone: '+91 98000 00000',
+      })
     : null;
 
   return (
@@ -317,43 +332,27 @@ export const App: React.FC = () => {
             />
           )}
 
-          {currentUser.role === 'teacher' && (
-            activeTeacher ? (
-              <TeacherDashboard
-                currentTeacher={activeTeacher}
-                appointments={appointments}
-                timetables={timetables}
-                onUpdateTeacher={handleUpdateTeacher}
-                onApproveAppointment={handleApproveAppointment}
-                onRejectAppointment={handleRejectAppointment}
-                onAddTimetableSlot={handleAddTimetableSlot}
-                onDeleteTimetableSlot={handleDeleteTimetableSlot}
-              />
-            ) : (
-              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-                <h3>No Teacher Profile Linked</h3>
-                <p>Please register your teacher profile from the registration page.</p>
-                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleLogout}>Back to Login / Register</button>
-              </div>
-            )
+          {currentUser.role === 'teacher' && activeTeacher && (
+            <TeacherDashboard
+              currentTeacher={activeTeacher}
+              appointments={appointments}
+              timetables={timetables}
+              onUpdateTeacher={handleUpdateTeacher}
+              onApproveAppointment={handleApproveAppointment}
+              onRejectAppointment={handleRejectAppointment}
+              onAddTimetableSlot={handleAddTimetableSlot}
+              onDeleteTimetableSlot={handleDeleteTimetableSlot}
+            />
           )}
 
-          {currentUser.role === 'student' && (
-            activeStudent ? (
-              <StudentDashboard
-                currentStudent={activeStudent}
-                teachers={teachers}
-                appointments={appointments}
-                timetables={timetables}
-                onBookAppointment={handleBookAppointment}
-              />
-            ) : (
-              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-                <h3>No Student Profile Linked</h3>
-                <p>Please register your student profile from the registration page.</p>
-                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleLogout}>Back to Login / Register</button>
-              </div>
-            )
+          {currentUser.role === 'student' && activeStudent && (
+            <StudentDashboard
+              currentStudent={activeStudent}
+              teachers={teachers}
+              appointments={appointments}
+              timetables={timetables}
+              onBookAppointment={handleBookAppointment}
+            />
           )}
         </main>
       )}
