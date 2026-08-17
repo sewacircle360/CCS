@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Teacher, Student, Appointment, CampusBlock } from '../types';
-import { Users, UserCheck, GraduationCap, Calendar, Building2, CheckCircle2, XCircle, Search, Filter, ShieldCheck, MapPin } from 'lucide-react';
+import { Users, GraduationCap, Calendar, MapPin, CheckCircle2, XCircle, Search, Plus, Filter, Shield, AlertCircle } from 'lucide-react';
 
 interface AdminDashboardProps {
   teachers: Teacher[];
@@ -22,160 +22,154 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddStudent,
 }) => {
   const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'appointments' | 'blocks'>('teachers');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [deptFilter, setDeptFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('all');
 
-  const pendingAppointmentsCount = appointments.filter(a => a.status === 'pending').length;
-  const approvedAppointmentsCount = appointments.filter(a => a.status === 'approved').length;
   const verifiedTeachersCount = teachers.filter(t => t.verified).length;
+  const pendingAppointmentsCount = appointments.filter(a => a.status === 'pending').length;
 
   const filteredTeachers = teachers.filter(t => {
-    const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.subjects.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      t.cabinNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.empId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDept = deptFilter === 'all' || t.department === deptFilter;
-    return matchesSearch && matchesDept;
+    const q = searchQuery.toLowerCase();
+    const matchesQuery = t.name.toLowerCase().includes(q) ||
+      t.empId.toLowerCase().includes(q) ||
+      t.cabinNumber.toLowerCase().includes(q) ||
+      t.subjects.some(s => s.toLowerCase().includes(q)) ||
+      t.designation.toLowerCase().includes(q);
+
+    const matchesDept = selectedDept === 'all' || t.department === selectedDept;
+    return matchesQuery && matchesDept;
   });
 
   const filteredStudents = students.filter(s => {
-    return s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.uid.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
   });
 
   return (
     <div className="admin-dashboard">
-      {/* Top Banner */}
+      {/* Admin Top Header Banner */}
       <div className="admin-banner">
         <div>
           <h2>Admin Control Center 🛡️</h2>
           <p>Chandigarh University Campus Connectivity & Cabin Infrastructure Directory</p>
         </div>
-        <div className="banner-badge">
-          <ShieldCheck size={18} />
+        <div className="admin-badge-pill">
+          <Shield size={16} />
           <span>CU System Master Access</span>
         </div>
       </div>
 
-      {/* KPI Stat Cards */}
+      {/* Top Metric Cards */}
       <div className="stats-grid">
-        <div className="stat-card border-red">
-          <div className="stat-icon red"><UserCheck size={24} /></div>
-          <div className="stat-info">
-            <span className="stat-value">{teachers.length}</span>
-            <span className="stat-label">Faculty Members ({verifiedTeachersCount} Verified)</span>
+        <div className="stat-card">
+          <div className="stat-icon red">
+            <Users size={24} />
+          </div>
+          <div>
+            <div className="stat-value">{teachers.length}</div>
+            <div className="stat-label">Faculty Members ({verifiedTeachersCount} Verified)</div>
           </div>
         </div>
 
-        <div className="stat-card border-blue">
-          <div className="stat-icon blue"><GraduationCap size={24} /></div>
-          <div className="stat-info">
-            <span className="stat-value">{students.length}</span>
-            <span className="stat-label">Registered Students</span>
+        <div className="stat-card">
+          <div className="stat-icon blue">
+            <GraduationCap size={24} />
+          </div>
+          <div>
+            <div className="stat-value">{students.length}</div>
+            <div className="stat-label">Registered Students</div>
           </div>
         </div>
 
-        <div className="stat-card border-amber">
-          <div className="stat-icon amber"><Calendar size={24} /></div>
-          <div className="stat-info">
-            <span className="stat-value">{appointments.length}</span>
-            <span className="stat-label">Total Appointments ({pendingAppointmentsCount} Pending)</span>
+        <div className="stat-card">
+          <div className="stat-icon gold">
+            <Calendar size={24} />
+          </div>
+          <div>
+            <div className="stat-value">{appointments.length}</div>
+            <div className="stat-label">Total Appointments ({pendingAppointmentsCount} Pending)</div>
           </div>
         </div>
 
-        <div className="stat-card border-green">
-          <div className="stat-icon green"><Building2 size={24} /></div>
-          <div className="stat-info">
-            <span className="stat-value">{blocks.reduce((acc, b) => acc + b.totalCabins, 0)}</span>
-            <span className="stat-label">Total CU Cabins Managed</span>
+        <div className="stat-card">
+          <div className="stat-icon green">
+            <MapPin size={24} />
+          </div>
+          <div>
+            <div className="stat-value">1026</div>
+            <div className="stat-label">Total CU Cabins Managed</div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Tabs Navigation */}
       <div className="admin-tabs-bar">
-        <div className="tabs">
-          <button
-            className={`tab-btn ${activeTab === 'teachers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('teachers')}
-          >
-            <UserCheck size={16} />
-            Faculty / Teachers ({teachers.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`}
-            onClick={() => setActiveTab('students')}
-          >
-            <GraduationCap size={16} />
-            Students Directory ({students.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'appointments' ? 'active' : ''}`}
-            onClick={() => setActiveTab('appointments')}
-          >
-            <Calendar size={16} />
-            Master Appointments Audit ({appointments.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'blocks' ? 'active' : ''}`}
-            onClick={() => setActiveTab('blocks')}
-          >
-            <Building2 size={16} />
-            Campus Blocks ({blocks.length})
-          </button>
-        </div>
+        <button
+          className={`tab-item ${activeTab === 'teachers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('teachers')}
+        >
+          <Users size={16} /> Faculty / Teachers ({teachers.length})
+        </button>
 
-        <div className="tab-actions">
-          {activeTab === 'teachers' && (
-            <button className="btn btn-primary btn-sm" onClick={onAddTeacher}>
-              + Add Faculty
-            </button>
-          )}
-          {activeTab === 'students' && (
-            <button className="btn btn-primary btn-sm" onClick={onAddStudent}>
-              + Register Student
-            </button>
-          )}
-        </div>
+        <button
+          className={`tab-item ${activeTab === 'students' ? 'active' : ''}`}
+          onClick={() => setActiveTab('students')}
+        >
+          <GraduationCap size={16} /> Students Directory ({students.length})
+        </button>
+
+        <button
+          className={`tab-item ${activeTab === 'appointments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('appointments')}
+        >
+          <Calendar size={16} /> Master Appointments Audit ({appointments.length})
+        </button>
+
+        <button
+          className={`tab-item ${activeTab === 'blocks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('blocks')}
+        >
+          <MapPin size={16} /> Campus Blocks ({blocks.length})
+        </button>
       </div>
 
-      {/* Filters Bar */}
-      {(activeTab === 'teachers' || activeTab === 'students') && (
-        <div className="filter-bar">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder={activeTab === 'teachers' ? "Search teacher name, Emp ID, cabin, subject..." : "Search student name, UID, email..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-control"
-            />
-          </div>
-
-          {activeTab === 'teachers' && (
-            <div className="dept-filter">
-              <Filter size={16} />
-              <select
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                className="form-control select-dept"
-              >
-                <option value="all">All Departments</option>
-                <option value="Computer Science & Engineering">CSE</option>
-                <option value="Artificial Intelligence & Data Science">AI & DS</option>
-                <option value="Computer Applications">BCA / MCA</option>
-                <option value="Electronics & Communication">ECE</option>
-                <option value="Business School (USB)">Management (USB)</option>
-              </select>
-            </div>
-          )}
+      {/* Search & Actions Bar */}
+      <div className="table-controls-card">
+        <div className="search-bar">
+          <Search size={18} className="search-icon" />
+          <input
+            type="text"
+            placeholder={
+              activeTab === 'teachers' ? "Search teacher name, Emp ID, cabin, subject..." :
+              activeTab === 'students' ? "Search student name, UID, email..." : "Search..."
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="form-control input-search"
+          />
         </div>
-      )}
 
-      {/* Tab Content 1: Teachers */}
+        {activeTab === 'teachers' && (
+          <div className="filter-controls">
+            <Filter size={16} className="text-muted" />
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              className="form-control select-dept"
+            >
+              <option value="all">All Departments</option>
+              <option value="Computer Science & Engineering">CSE</option>
+              <option value="Artificial Intelligence & Data Science">AI & DS</option>
+              <option value="Computer Applications">Computer Applications</option>
+              <option value="Electronics & Communication">ECE</option>
+              <option value="Business School (USB)">Management (USB)</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* TAB 1: TEACHERS TABLE */}
       {activeTab === 'teachers' && (
         <div className="table-card">
           <table className="data-table">
@@ -192,64 +186,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filteredTeachers.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <div className="user-profile-cell">
-                      <img src={t.avatar} alt={t.name} className="avatar-img" />
-                      <div>
-                        <div className="user-name">{t.name}</div>
-                        <div className="user-sub">{t.empId} • {t.designation}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><span className="dept-badge">{t.department}</span></td>
-                  <td>
-                    <div className="location-cell">
-                      <MapPin size={14} className="icon-red" />
-                      <span><strong>{t.blockNumber}</strong>, Room {t.roomNumber}</span>
-                    </div>
-                  </td>
-                  <td><strong className="cabin-highlight">{t.cabinNumber}</strong></td>
-                  <td>
-                    <div className="subjects-tags">
-                      {t.subjects.slice(0, 2).map((s, idx) => (
-                        <span key={idx} className="tag-pill">{s}</span>
-                      ))}
-                      {t.subjects.length > 2 && (
-                        <span className="tag-more">+{t.subjects.length - 2} more</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${t.status}`}>
-                      <span className={`pulse-dot ${t.status}`}></span>
-                      {t.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td>
-                    {t.verified ? (
-                      <span className="verified-tag"><CheckCircle2 size={16} className="text-green" /> Verified</span>
-                    ) : (
-                      <span className="unverified-tag"><XCircle size={16} className="text-muted" /> Unverified</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className={`btn btn-sm ${t.verified ? 'btn-secondary' : 'btn-success'}`}
-                      onClick={() => onVerifyTeacher(t.id)}
-                    >
-                      {t.verified ? 'Unverify' : 'Verify'}
-                    </button>
+              {filteredTeachers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    No faculty profiles found matching your filter.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTeachers.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <div className="user-cell">
+                        <img src={t.avatar} alt={t.name} className="user-avatar" />
+                        <div>
+                          <div className="font-bold">{t.name}</div>
+                          <div className="user-sub">
+                            CU-EMP-{t.empId} • <span className="text-red font-semibold">{t.designation}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{t.department}</td>
+                    <td>
+                      <span className="font-bold">{t.blockNumber}</span>, Room {t.roomNumber}
+                    </td>
+                    <td>
+                      <span className="cabin-tag">{t.cabinNumber}</span>
+                    </td>
+                    <td>
+                      {t.subjects && t.subjects.length > 0 ? (
+                        t.subjects.join(', ')
+                      ) : (
+                        <span className="text-muted-italic">Not Added Yet</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge badge-${t.status}`}>
+                        <span className={`pulse-dot ${t.status}`}></span>
+                        {t.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      {t.verified ? (
+                        <span className="text-green flex-center">
+                          <CheckCircle2 size={16} /> Verified
+                        </span>
+                      ) : (
+                        <span className="text-muted flex-center">
+                          <AlertCircle size={16} /> Pending
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className={`btn btn-sm ${t.verified ? 'btn-secondary' : 'btn-success'}`}
+                        onClick={() => onVerifyTeacher(t.id)}
+                      >
+                        {t.verified ? 'Unverify' : 'Approve'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Tab Content 2: Students */}
+      {/* TAB 2: STUDENTS TABLE */}
       {activeTab === 'students' && (
         <div className="table-card">
           <table className="data-table">
@@ -259,101 +263,105 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <th>UID / Roll No</th>
                 <th>Email Address</th>
                 <th>Department</th>
-                <th>Semester</th>
-                <th>Contact</th>
+                <th>Semester / Year</th>
+                <th>Phone</th>
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((s) => (
-                <tr key={s.id}>
-                  <td><strong>{s.name}</strong></td>
-                  <td><span className="uid-badge">{s.uid}</span></td>
-                  <td>{s.email}</td>
-                  <td>{s.department}</td>
-                  <td>{s.semester}</td>
-                  <td>{s.phone}</td>
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    No registered students yet. Students can register using the Student portal on the login page.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredStudents.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <div className="font-bold">{s.name}</div>
+                    </td>
+                    <td><span className="uid-tag">{s.uid}</span></td>
+                    <td>{s.email}</td>
+                    <td>{s.department}</td>
+                    <td>{s.semester}</td>
+                    <td>{s.phone}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Tab Content 3: Appointments */}
+      {/* TAB 3: MASTER APPOINTMENTS AUDIT */}
       {activeTab === 'appointments' && (
         <div className="table-card">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Student</th>
-                <th>Faculty</th>
-                <th>Date & Time Slot</th>
-                <th>Location Details</th>
-                <th>Subject & Purpose</th>
+                <th>Student (UID)</th>
+                <th>Teacher & Cabin</th>
+                <th>Date & Slot</th>
+                <th>Subject / Reason</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {appointments.map((apt) => (
-                <tr key={apt.id}>
-                  <td>
-                    <div>
-                      <strong>{apt.studentName}</strong>
-                      <div className="user-sub">{apt.studentUid}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <div>
-                      <strong>{apt.teacherName}</strong>
-                      <div className="user-sub">{apt.teacherCabin}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <div><strong>{apt.date}</strong></div>
-                    <div className="user-sub">{apt.timeSlot}</div>
-                  </td>
-                  <td>{apt.teacherBlock}</td>
-                  <td>
-                    <div><strong>{apt.subject}</strong></div>
-                    <div className="user-sub truncate-reason">{apt.reason}</div>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${apt.status}`}>
-                      {apt.status.toUpperCase()}
-                    </span>
-                    {apt.status === 'rejected' && apt.rejectionReason && (
-                      <div className="rejection-note" title={apt.rejectionReason}>
-                        Reason: {apt.rejectionReason}
-                      </div>
-                    )}
+              {appointments.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    No appointments booked yet.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                appointments.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <div className="font-bold">{a.studentName}</div>
+                      <div className="user-sub">{a.studentUid} • {a.studentEmail}</div>
+                    </td>
+                    <td>
+                      <div className="font-bold">{a.teacherName}</div>
+                      <div className="user-sub">{a.teacherBlock} • {a.teacherCabin}</div>
+                    </td>
+                    <td>
+                      <div className="font-bold">{a.date}</div>
+                      <div className="user-sub">{a.timeSlot}</div>
+                    </td>
+                    <td>
+                      <div><strong>{a.subject}</strong></div>
+                      <div className="user-sub">"{a.reason}"</div>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${a.status}`}>
+                        {a.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Tab Content 4: Blocks */}
+      {/* TAB 4: CAMPUS BLOCKS */}
       {activeTab === 'blocks' && (
         <div className="blocks-grid">
-          {blocks.map((blk) => (
-            <div key={blk.id} className="block-card">
+          {blocks.map((b) => (
+            <div key={b.id} className="block-card card">
               <div className="block-header">
-                <div className="block-code">{blk.blockCode}</div>
-                <Building2 size={24} className="block-icon" />
+                <MapPin size={20} className="text-red" />
+                <h3>{b.blockCode}</h3>
               </div>
-              <h3 className="block-name">{blk.name}</h3>
-              <div className="block-cabins-info">
-                <span>Total Cabins: <strong>{blk.totalCabins} Cabins</strong></span>
+              <p className="block-name">{b.name}</p>
+              <div className="block-meta">
+                <span>Total Cabins: <strong>{b.totalCabins}</strong></span>
               </div>
-              <div className="block-depts">
-                <label>Hosted Departments:</label>
-                <ul>
-                  {blk.departments.map((d, i) => (
-                    <li key={i}>{d}</li>
-                  ))}
-                </ul>
+              <div className="depts-list">
+                {b.departments.map((d, i) => (
+                  <span key={i} className="dept-tag">{d}</span>
+                ))}
               </div>
             </div>
           ))}
@@ -367,7 +375,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           gap: 1.5rem;
         }
         .admin-banner {
-          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
           color: #ffffff;
           padding: 1.5rem 2rem;
           border-radius: var(--radius-md);
@@ -382,34 +390,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
         .admin-banner p {
           color: #94a3b8;
-          font-size: 0.875rem;
+          font-size: 0.85rem;
           margin-top: 0.25rem;
         }
-        .banner-badge {
+        .admin-badge-pill {
           background: rgba(200, 16, 46, 0.2);
-          border: 1px solid var(--cu-red);
-          color: #ff8093;
-          padding: 0.5rem 1rem;
+          border: 1px solid rgba(200, 16, 46, 0.4);
+          color: #ff4d6d;
+          padding: 0.4rem 0.85rem;
           border-radius: 9999px;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 0.825rem;
+          gap: 0.4rem;
+          font-size: 0.775rem;
           font-weight: 700;
         }
+
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 1.25rem;
         }
         .stat-card {
           background: #ffffff;
+          border: 1px solid var(--border-light);
           padding: 1.25rem;
           border-radius: var(--radius-md);
-          border: 1px solid var(--border-light);
           display: flex;
           align-items: center;
-          gap: 1.25rem;
+          gap: 1rem;
           box-shadow: var(--shadow-sm);
         }
         .stat-icon {
@@ -420,34 +429,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           align-items: center;
           justify-content: center;
         }
-        .stat-icon.red { background: #fff0f2; color: var(--cu-red); }
+        .stat-icon.red { background: var(--cu-red-light); color: var(--cu-red); }
         .stat-icon.blue { background: #eff6ff; color: #3b82f6; }
-        .stat-icon.amber { background: #fffbeb; color: #f59e0b; }
+        .stat-icon.gold { background: #fffbeb; color: #d97706; }
         .stat-icon.green { background: #ecfdf5; color: #10b981; }
-        
+
         .stat-value {
-          font-size: 1.6rem;
+          font-size: 1.5rem;
           font-weight: 800;
-          display: block;
           line-height: 1.2;
         }
         .stat-label {
-          font-size: 0.8rem;
+          font-size: 0.775rem;
           color: var(--text-muted);
-          font-weight: 600;
+          margin-top: 0.15rem;
         }
+
         .admin-tabs-bar {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: 2px solid var(--border-light);
-          padding-bottom: 0.25rem;
-        }
-        .tabs {
-          display: flex;
           gap: 0.5rem;
+          border-bottom: 2px solid var(--border-light);
         }
-        .tab-btn {
+        .tab-item {
           border: none;
           background: transparent;
           padding: 0.75rem 1.25rem;
@@ -461,39 +464,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           gap: 0.5rem;
           transition: all 0.2s;
         }
-        .tab-btn.active {
+        .tab-item.active {
           color: var(--cu-red);
           border-bottom-color: var(--cu-red);
           font-weight: 700;
         }
-        .filter-bar {
+
+        .table-controls-card {
+          background: #ffffff;
+          border: 1px solid var(--border-light);
+          padding: 1rem 1.25rem;
+          border-radius: var(--radius-md);
           display: flex;
-          gap: 1rem;
           align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          box-shadow: var(--shadow-sm);
         }
-        .search-box {
+        .search-bar {
           position: relative;
           flex: 1;
+          max-width: 450px;
         }
         .search-icon {
           position: absolute;
-          left: 0.9rem;
+          left: 0.85rem;
           top: 50%;
           transform: translateY(-50%);
           color: var(--text-muted);
         }
-        .search-box input {
-          padding-left: 2.6rem;
+        .input-search {
+          padding-left: 2.5rem;
         }
-        .dept-filter {
+        .filter-controls {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: var(--text-muted);
         }
         .select-dept {
-          width: 220px;
+          width: auto;
+          min-width: 220px;
         }
+
         .table-card {
           background: #ffffff;
           border-radius: var(--radius-md);
@@ -501,145 +513,77 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           box-shadow: var(--shadow-sm);
           overflow-x: auto;
         }
-        .user-profile-cell {
+        .user-cell {
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
-        .avatar-img {
-          width: 38px;
-          height: 38px;
+        .user-avatar {
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           object-fit: cover;
-          border: 2px solid var(--border-light);
-        }
-        .user-name {
-          font-weight: 700;
-          color: var(--text-main);
         }
         .user-sub {
-          font-size: 0.775rem;
+          font-size: 0.75rem;
           color: var(--text-muted);
         }
-        .dept-badge {
+        .cabin-tag {
+          background: var(--cu-red-light);
+          color: var(--cu-red);
+          font-weight: 700;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.8rem;
+        }
+        .uid-tag {
           background: #f1f5f9;
           color: var(--text-main);
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
-          font-size: 0.775rem;
-          font-weight: 600;
-        }
-        .cabin-highlight {
-          color: var(--cu-red);
-          background: var(--cu-red-light);
-          padding: 0.25rem 0.6rem;
-          border-radius: 6px;
-        }
-        .location-cell {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-        }
-        .icon-red { color: var(--cu-red); }
-        .subjects-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.3rem;
-        }
-        .tag-pill {
-          background: #f8fafc;
-          border: 1px solid var(--border-light);
-          padding: 0.15rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
-        }
-        .tag-more {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-        }
-        .verified-tag {
-          color: #059669;
-          font-weight: 600;
-          font-size: 0.8rem;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        .unverified-tag {
-          color: var(--text-muted);
-          font-size: 0.8rem;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        .uid-badge {
-          background: #eff6ff;
-          color: #2563eb;
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
           font-weight: 700;
-          font-family: monospace;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.8rem;
         }
-        .rejection-note {
-          font-size: 0.75rem;
-          color: #dc2626;
-          margin-top: 0.25rem;
-          font-style: italic;
-        }
+        .text-green { color: #059669; }
+        .text-red { color: var(--cu-red); }
+        .text-muted-italic { color: #94a3b8; font-style: italic; font-size: 0.8rem; }
+        .flex-center { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; }
+
         .blocks-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 1.25rem;
         }
         .block-card {
-          background: #ffffff;
-          border-radius: var(--radius-md);
-          border: 1px solid var(--border-light);
-          padding: 1.5rem;
-          box-shadow: var(--shadow-sm);
+          padding: 1.25rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
         .block-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.75rem;
+          gap: 0.5rem;
         }
-        .block-code {
-          background: var(--cu-red);
-          color: #ffffff;
-          padding: 0.25rem 0.75rem;
-          border-radius: 6px;
-          font-weight: 800;
-          font-size: 0.85rem;
-        }
-        .block-icon { color: var(--text-muted); }
         .block-name {
-          font-size: 1.1rem;
-          margin-bottom: 0.75rem;
-        }
-        .block-cabins-info {
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
-          padding-bottom: 0.75rem;
-          border-bottom: 1px solid var(--border-light);
-        }
-        .block-depts label {
-          font-size: 0.8rem;
-          font-weight: 700;
+          font-size: 0.85rem;
           color: var(--text-muted);
-          display: block;
-          margin-bottom: 0.4rem;
         }
-        .block-depts ul {
-          list-style: disc;
-          padding-left: 1.2rem;
+        .block-meta {
           font-size: 0.85rem;
         }
-        .truncate-reason {
-          max-width: 250px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .depts-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.35rem;
+          margin-top: 0.25rem;
+        }
+        .dept-tag {
+          background: #f1f5f9;
+          font-size: 0.725rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: 4px;
+          font-weight: 600;
         }
       `}</style>
     </div>
