@@ -1,4 +1,5 @@
 import { Teacher, Student, Appointment, TimetableSlot, CampusBlock, User } from './types';
+import { OFFICIAL_CU_FACULTY_LIST } from './facultyData';
 
 export const INITIAL_USERS: User[] = [
   {
@@ -28,16 +29,20 @@ export const INITIAL_BLOCKS: CampusBlock[] = ALL_BLOCK_CODES.map((code, idx) => 
 
 export const TEACHER_ROLE_DESIGNATIONS = [
   'HOD (Head of Department)',
+  'Deputy HOD',
   'ACO (Academic Coordinator)',
   'AO (Administrative Officer)',
   'Project Coordinator',
-  'Assistant Professor',
+  'NAAC Coordinator',
+  'Time Table Coordinator',
+  'Technical Trainer SPOC',
+  'Professor / Associate Director',
   'Associate Professor',
-  'Professor',
+  'Assistant Professor',
   'Faculty Member / Teacher',
 ];
 
-export const INITIAL_TEACHERS: Teacher[] = [];
+export const INITIAL_TEACHERS: Teacher[] = OFFICIAL_CU_FACULTY_LIST;
 
 export const INITIAL_STUDENTS: Student[] = [];
 

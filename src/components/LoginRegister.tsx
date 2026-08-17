@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Teacher, Student, UserRole } from '../types';
 import { ALL_BLOCK_CODES, TEACHER_ROLE_DESIGNATIONS } from '../mockData';
-import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Key } from 'lucide-react';
 
 interface LoginRegisterProps {
   users: User[];
@@ -21,13 +21,18 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   onRegisterStudent,
 }) => {
   const [portalRole, setPortalRole] = useState<UserRole>('student');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'claim' | 'register'>('login');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   // Login Form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+
+  // Claim Faculty Profile Form (Using Ecode or Email)
+  const [claimEcodeOrEmail, setClaimEcodeOrEmail] = useState('');
+  const [claimPassword, setClaimPassword] = useState('');
+  const [matchedTeacher, setMatchedTeacher] = useState<Teacher | null>(null);
 
   // Teacher Register
   const [tName, setTName] = useState('');
@@ -36,11 +41,11 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [tEmpId, setTEmpId] = useState('');
   const [tPhone, setTPhone] = useState('');
   const [tDept, setTDept] = useState('Computer Science & Engineering');
-  const [tBlockNumber, setTBlockNumber] = useState('Block A3');
-  const [tRoomNumber, setTRoomNumber] = useState('402');
-  const [tCabinNumber, setTCabinNumber] = useState('Cabin C-14');
-  const [tSubjects, setTSubjects] = useState('Data Structures, Java');
-  const [tDesignation, setTDesignation] = useState('HOD (Head of Department)');
+  const [tBlockNumber, setTBlockNumber] = useState('Block B3');
+  const [tRoomNumber, setTRoomNumber] = useState('304 A');
+  const [tCabinNumber, setTCabinNumber] = useState('Cabin 304 A');
+  const [tSubjects, setTSubjects] = useState('Computer Science');
+  const [tDesignation, setTDesignation] = useState('Assistant Professor');
 
   // Student Register
   const [sName, setSName] = useState('');
@@ -80,7 +85,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     );
 
     if (!foundUser) {
-      setErrorMessage(`No ${portalRole} account registered with email "${loginEmail}". Please click "New Registration" below!`);
+      setErrorMessage(`No ${portalRole} account registered with email "${loginEmail}". Click "Activate Official Profile" or "New Registration"!`);
       return;
     }
 
@@ -92,6 +97,62 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     onLoginSuccess(foundUser);
   };
 
+  // Search for official pre-seeded profile by Ecode or Email
+  const handleCheckEcode = (val: string) => {
+    setClaimEcodeOrEmail(val);
+    setErrorMessage('');
+    const query = val.trim().toLowerCase();
+    if (!query) {
+      setMatchedTeacher(null);
+      return;
+    }
+    const found = teachers.find(
+      t => t.empId.toLowerCase() === query || t.email.toLowerCase() === query
+    );
+    setMatchedTeacher(found || null);
+  };
+
+  const handleClaimSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    if (!matchedTeacher) {
+      setErrorMessage(`No pre-loaded CU Faculty profile found for "${claimEcodeOrEmail}". Please verify your Employee Ecode or Email.`);
+      return;
+    }
+
+    if (!claimPassword) {
+      setErrorMessage('Please set a password for your account.');
+      return;
+    }
+
+    // Check if user already activated
+    const existingUser = users.find(u => u.email.toLowerCase() === matchedTeacher.email.toLowerCase());
+    if (existingUser) {
+      // Login directly with updated password
+      existingUser.password = claimPassword;
+      onLoginSuccess(existingUser);
+      return;
+    }
+
+    // Activate profile without creating duplicate teacher row!
+    onRegisterTeacher({
+      userId: '',
+      name: matchedTeacher.name,
+      empId: matchedTeacher.empId,
+      email: matchedTeacher.email,
+      phone: matchedTeacher.phone,
+      department: matchedTeacher.department,
+      blockName: matchedTeacher.blockName,
+      blockNumber: matchedTeacher.blockNumber,
+      roomNumber: matchedTeacher.roomNumber,
+      cabinNumber: matchedTeacher.cabinNumber,
+      subjects: matchedTeacher.subjects,
+      avatar: matchedTeacher.avatar,
+      designation: matchedTeacher.designation,
+    }, claimPassword);
+  };
+
   const handleRegisterTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -99,6 +160,31 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
       setErrorMessage('Please fill out all required fields.');
       return;
     }
+
+    // Smart check: If teacher Ecode or Email already exists in PDF dataset, match and activate instead of creating duplicate!
+    const preExisting = teachers.find(
+      t => t.empId.toLowerCase() === tEmpId.trim().toLowerCase() || t.email.toLowerCase() === tEmail.trim().toLowerCase()
+    );
+
+    if (preExisting) {
+      onRegisterTeacher({
+        userId: '',
+        name: preExisting.name,
+        empId: preExisting.empId,
+        email: preExisting.email,
+        phone: tPhone || preExisting.phone,
+        department: preExisting.department,
+        blockName: preExisting.blockName,
+        blockNumber: preExisting.blockNumber,
+        roomNumber: preExisting.roomNumber,
+        cabinNumber: preExisting.cabinNumber,
+        subjects: preExisting.subjects,
+        avatar: preExisting.avatar,
+        designation: preExisting.designation,
+      }, tPassword);
+      return;
+    }
+
     const subjectsArray = tSubjects.split(',').map(s => s.trim()).filter(Boolean);
     onRegisterTeacher({
       userId: '',
@@ -156,7 +242,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
         <div className="portal-tabs">
           <button
             className={`portal-tab ${portalRole === 'student' ? 'active' : ''}`}
-            onClick={() => { setPortalRole('student'); setErrorMessage(''); }}
+            onClick={() => { setPortalRole('student'); setAuthMode('login'); setErrorMessage(''); }}
           >
             <GraduationCap size={18} />
             <span>Student</span>
@@ -164,7 +250,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
           <button
             className={`portal-tab ${portalRole === 'teacher' ? 'active' : ''}`}
-            onClick={() => { setPortalRole('teacher'); setErrorMessage(''); }}
+            onClick={() => { setPortalRole('teacher'); setAuthMode('login'); setErrorMessage(''); }}
           >
             <UserCheck size={18} />
             <span>Teacher / Faculty</span>
@@ -179,8 +265,31 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </button>
         </div>
 
-        {/* Mode Toggle (Login vs Register) - Only for Student and Teacher */}
-        {portalRole !== 'admin' && (
+        {/* Mode Toggle (Login vs Claim vs Register) */}
+        {portalRole === 'teacher' && (
+          <div className="auth-mode-toggle">
+            <button
+              className={`mode-btn ${authMode === 'login' ? 'active' : ''}`}
+              onClick={() => { setAuthMode('login'); setErrorMessage(''); }}
+            >
+              Sign In
+            </button>
+            <button
+              className={`mode-btn ${authMode === 'claim' ? 'active' : ''}`}
+              onClick={() => { setAuthMode('claim'); setErrorMessage(''); }}
+            >
+              ⚡ Activate Official Profile
+            </button>
+            <button
+              className={`mode-btn ${authMode === 'register' ? 'active' : ''}`}
+              onClick={() => { setAuthMode('register'); setErrorMessage(''); }}
+            >
+              New Registration
+            </button>
+          </div>
+        )}
+
+        {portalRole === 'student' && (
           <div className="auth-mode-toggle">
             <button
               className={`mode-btn ${authMode === 'login' ? 'active' : ''}`}
@@ -218,13 +327,19 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           <form onSubmit={handleLoginSubmit} className="auth-form">
             <div className="form-group">
               <label>
-                <Mail size={16} /> Email Address:
+                <Mail size={16} /> Email Address / Ecode:
               </label>
               <input
-                type="email"
+                type="text"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Enter registered email address"
+                placeholder={
+                  portalRole === 'admin'
+                    ? "sewacircle360@gmail.com"
+                    : portalRole === 'teacher'
+                    ? "e.g. ad1.cse@cumail.in or gagandeep.e8657@cumail.in"
+                    : "Enter your registered email address"
+                }
                 className="form-control"
                 required
               />
@@ -251,7 +366,63 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </form>
         )}
 
-        {/* FORM 2: TEACHER REGISTER */}
+        {/* FORM 2: CLAIM / ACTIVATE PRE-LOADED CU FACULTY PROFILE (0 DUPLICATES!) */}
+        {authMode === 'claim' && portalRole === 'teacher' && (
+          <form onSubmit={handleClaimSubmit} className="auth-form">
+            <div className="claim-intro-card">
+              <Sparkles size={18} className="text-red" />
+              <div>
+                <strong>Activate Your Official CU Faculty Profile</strong>
+                <p>Enter your Employee Ecode (e.g. <code>6220</code>, <code>8657</code>, <code>12999</code>) or official email to claim your pre-seeded cabin profile.</p>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label><Key size={16} /> Enter Employee Ecode or Email Address *</label>
+              <input
+                type="text"
+                value={claimEcodeOrEmail}
+                onChange={(e) => handleCheckEcode(e.target.value)}
+                placeholder="e.g. 6220 or gagandeep.e8657@cumail.in"
+                className="form-control"
+                required
+              />
+            </div>
+
+            {/* Matched Profile Preview */}
+            {matchedTeacher ? (
+              <div className="matched-card">
+                <CheckCircle2 size={20} className="text-green" />
+                <div>
+                  <div className="matched-name">{matchedTeacher.name} (Ecode: {matchedTeacher.empId})</div>
+                  <div className="matched-sub">{matchedTeacher.designation} • {matchedTeacher.blockNumber}, Room {matchedTeacher.roomNumber} ({matchedTeacher.cabinNumber})</div>
+                </div>
+              </div>
+            ) : claimEcodeOrEmail.length > 2 && (
+              <div className="searching-hint">
+                Searching official CU faculty database... Try Ecode <code>6220</code>, <code>8657</code>, <code>12999</code>, <code>12830</code>, <code>5922</code>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label><Lock size={16} /> Set Password for Your Account *</label>
+              <input
+                type="password"
+                value={claimPassword}
+                onChange={(e) => setClaimPassword(e.target.value)}
+                placeholder="Set password to activate account"
+                className="form-control"
+                required
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary btn-block">
+              Activate Profile & Sign In
+            </button>
+          </form>
+        )}
+
+        {/* FORM 3: TEACHER REGISTER */}
         {authMode === 'register' && portalRole === 'teacher' && (
           <form onSubmit={handleRegisterTeacherSubmit} className="auth-form">
             <div className="form-row">
@@ -261,18 +432,18 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={tName}
                   onChange={(e) => setTName(e.target.value)}
-                  placeholder="e.g. Dr. Rajesh Sharma"
+                  placeholder="e.g. Dr. Sandeep Singh Kang"
                   className="form-control"
                   required
                 />
               </div>
               <div className="form-group flex-1">
-                <label>Employee ID *</label>
+                <label>Employee Ecode *</label>
                 <input
                   type="text"
                   value={tEmpId}
                   onChange={(e) => setTEmpId(e.target.value)}
-                  placeholder="e.g. CU-EMP-1042"
+                  placeholder="e.g. 6220"
                   className="form-control"
                   required
                 />
@@ -286,7 +457,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="email"
                   value={tEmail}
                   onChange={(e) => setTEmail(e.target.value)}
-                  placeholder="e.g. teacher.name@gmail.com"
+                  placeholder="e.g. ad1.cse@cumail.in"
                   className="form-control"
                   required
                 />
@@ -321,7 +492,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                 </select>
               </div>
 
-              {/* DESIGNATION / ROLE SELECTION */}
               <div className="form-group flex-1">
                 <label>Faculty Role / Designation *</label>
                 <select
@@ -362,7 +532,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={tRoomNumber}
                   onChange={(e) => setTRoomNumber(e.target.value)}
-                  placeholder="e.g. 402"
+                  placeholder="e.g. 304 A"
                   className="form-control"
                   required
                 />
@@ -374,7 +544,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={tCabinNumber}
                   onChange={(e) => setTCabinNumber(e.target.value)}
-                  placeholder="e.g. Cabin C-14"
+                  placeholder="e.g. Cabin 304 A"
                   className="form-control"
                   required
                 />
@@ -399,7 +569,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </form>
         )}
 
-        {/* FORM 3: STUDENT REGISTER */}
+        {/* FORM 4: STUDENT REGISTER */}
         {authMode === 'register' && portalRole === 'student' && (
           <form onSubmit={handleRegisterStudentSubmit} className="auth-form">
             <div className="form-row">
@@ -595,7 +765,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           border: none;
           background: transparent;
           padding: 0.65rem 0;
-          font-size: 0.875rem;
+          font-size: 0.85rem;
           font-weight: 600;
           color: var(--text-muted);
           cursor: pointer;
@@ -626,6 +796,42 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           background: #ecfdf5;
           border: 1px solid #a7f3d0;
           color: #059669;
+        }
+
+        .claim-intro-card {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          padding: 0.85rem;
+          border-radius: 8px;
+          display: flex;
+          gap: 0.75rem;
+          font-size: 0.825rem;
+          color: #1e40af;
+          margin-bottom: 1rem;
+        }
+        .matched-card {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+        }
+        .matched-name {
+          font-weight: 700;
+          color: #065f46;
+          font-size: 0.9rem;
+        }
+        .matched-sub {
+          font-size: 0.8rem;
+          color: #047857;
+        }
+        .searching-hint {
+          font-size: 0.775rem;
+          color: var(--text-muted);
+          margin-bottom: 1rem;
         }
 
         .auth-form {
