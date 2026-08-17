@@ -7,7 +7,6 @@ import { LoginRegister } from './components/LoginRegister';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
-import { MongoDbGuideModal } from './components/MongoDbGuideModal';
 
 export const App: React.FC = () => {
   // Authentication State
@@ -40,8 +39,6 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('cu_ccs_timetables');
     return saved ? JSON.parse(saved) : INITIAL_TIMETABLES;
   });
-
-  const [isMongoGuideOpen, setIsMongoGuideOpen] = useState(false);
 
   // Sync to Supabase & LocalStorage
   useEffect(() => {
@@ -283,7 +280,6 @@ export const App: React.FC = () => {
       <Header
         currentUser={currentUser}
         onLogout={handleLogout}
-        onOpenMongoGuide={() => setIsMongoGuideOpen(true)}
       />
 
       {/* Main View: Login/Register if not authenticated, else Dashboard */}
@@ -295,7 +291,6 @@ export const App: React.FC = () => {
           onLoginSuccess={handleLoginSuccess}
           onRegisterTeacher={handleRegisterTeacher}
           onRegisterStudent={handleRegisterStudent}
-          onOpenMongoGuide={() => setIsMongoGuideOpen(true)}
         />
       ) : (
         <main className="main-content">
@@ -334,13 +329,6 @@ export const App: React.FC = () => {
             />
           )}
         </main>
-      )}
-
-      {/* Backend & MongoDB Presentation Guide Modal */}
-      {isMongoGuideOpen && (
-        <MongoDbGuideModal
-          onClose={() => setIsMongoGuideOpen(false)}
-        />
       )}
     </div>
   );

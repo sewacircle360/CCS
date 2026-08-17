@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Teacher, Student, UserRole } from '../types';
 import { ALL_BLOCK_CODES, TEACHER_ROLE_DESIGNATIONS } from '../mockData';
-import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface LoginRegisterProps {
   users: User[];
@@ -10,7 +10,6 @@ interface LoginRegisterProps {
   onLoginSuccess: (user: User) => void;
   onRegisterTeacher: (teacherData: Omit<Teacher, 'id' | 'status' | 'verified'>, password: string) => void;
   onRegisterStudent: (studentData: Omit<Student, 'id'>, password: string) => void;
-  onOpenMongoGuide: () => void;
 }
 
 export const LoginRegister: React.FC<LoginRegisterProps> = ({
@@ -20,7 +19,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   onLoginSuccess,
   onRegisterTeacher,
   onRegisterStudent,
-  onOpenMongoGuide,
 }) => {
   const [portalRole, setPortalRole] = useState<UserRole>('student');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -70,12 +68,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
         onLoginSuccess(adminUser);
         return;
       } else {
-        setErrorMessage('Invalid Admin Credentials! Email: sewacircle360@gmail.com | Password: Admin@123');
+        setErrorMessage('Invalid Admin Credentials! Please check Email and Password.');
         return;
       }
     }
 
-    // Teacher or Student Login (Allows ANY email!)
+    // Teacher or Student Login
     const foundUser = users.find(
       u => u.email.toLowerCase() === loginEmail.trim().toLowerCase() && u.role === portalRole
     );
@@ -136,31 +134,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     }, sPassword);
   };
 
-  // Quick fill helper buttons for smooth demoing
-  const quickFillAdmin = () => {
-    setPortalRole('admin');
-    setAuthMode('login');
-    setLoginEmail('sewacircle360@gmail.com');
-    setLoginPassword('Admin@123');
-    setErrorMessage('');
-  };
-
-  const quickFillTeacher = () => {
-    setPortalRole('teacher');
-    setAuthMode('login');
-    setLoginEmail('rajesh.sharma@gmail.com');
-    setLoginPassword('Teacher@123');
-    setErrorMessage('');
-  };
-
-  const quickFillStudent = () => {
-    setPortalRole('student');
-    setAuthMode('login');
-    setLoginEmail('aarav.mehta@gmail.com');
-    setLoginPassword('Student@123');
-    setErrorMessage('');
-  };
-
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -215,7 +188,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               className={`mode-btn ${authMode === 'register' ? 'active' : ''}`}
               onClick={() => { setAuthMode('register'); setErrorMessage(''); }}
             >
-              New Registration (Gmail Allowed)
+              New Registration
             </button>
           </div>
         )}
@@ -241,19 +214,13 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           <form onSubmit={handleLoginSubmit} className="auth-form">
             <div className="form-group">
               <label>
-                <Mail size={16} /> Email Address (Gmail / Any Email Allowed):
+                <Mail size={16} /> Email Address:
               </label>
               <input
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder={
-                  portalRole === 'admin'
-                    ? "sewacircle360@gmail.com"
-                    : portalRole === 'teacher'
-                    ? "e.g. rajesh.sharma@gmail.com"
-                    : "e.g. aarav.mehta@gmail.com"
-                }
+                placeholder="Enter registered email address"
                 className="form-control"
                 required
               />
@@ -310,7 +277,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
             <div className="form-row">
               <div className="form-group flex-1">
-                <label>Email Address (Gmail / Any Email) *</label>
+                <label>Email Address *</label>
                 <input
                   type="email"
                   value={tEmail}
@@ -458,7 +425,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
             <div className="form-row">
               <div className="form-group flex-1">
-                <label>Email Address (Gmail / Any Email Allowed) *</label>
+                <label>Email Address *</label>
                 <input
                   type="email"
                   value={sEmail}
@@ -513,31 +480,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
             </button>
           </form>
         )}
-
-        {/* DEMO QUICK ACCESS BAR */}
-        <div className="quick-demo-box">
-          <div className="demo-title">
-            <Sparkles size={14} /> Quick Demo Login Fillers:
-          </div>
-          <div className="demo-buttons">
-            <button className="demo-btn admin" onClick={quickFillAdmin}>
-              🛡️ Admin (sewacircle360@gmail.com)
-            </button>
-            <button className="demo-btn teacher" onClick={quickFillTeacher}>
-              👨‍🏫 Teacher (rajesh.sharma@gmail.com)
-            </button>
-            <button className="demo-btn student" onClick={quickFillStudent}>
-              🎓 Student (aarav.mehta@gmail.com)
-            </button>
-          </div>
-        </div>
-
-        {/* Backend & MongoDB Architecture Button */}
-        <div className="backend-guide-link">
-          <button className="btn-link" onClick={onOpenMongoGuide}>
-            ⚡ View MongoDB & Backend Production Setup Architecture Guide
-          </button>
-        </div>
       </div>
 
       <style>{`
@@ -677,57 +619,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           background: var(--cu-red-light);
           padding: 0.4rem 0.75rem;
           border-radius: 6px;
-        }
-
-        .quick-demo-box {
-          margin-top: 1.5rem;
-          padding-top: 1.25rem;
-          border-top: 1px dashed var(--border-light);
-        }
-        .demo-title {
-          font-size: 0.775rem;
-          font-weight: 700;
-          color: var(--text-muted);
-          margin-bottom: 0.65rem;
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-        }
-        .demo-buttons {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-        .demo-btn {
-          border: 1px solid var(--border-light);
-          background: #f8fafc;
-          padding: 0.35rem 0.65rem;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .demo-btn:hover {
-          background: #e2e8f0;
-        }
-        .demo-btn.admin { color: #990000; font-weight: 700; }
-        
-        .backend-guide-link {
-          margin-top: 1.25rem;
-          text-align: center;
-        }
-        .btn-link {
-          background: transparent;
-          border: none;
-          color: #2563eb;
-          font-size: 0.825rem;
-          font-weight: 600;
-          cursor: pointer;
-          text-decoration: underline;
-        }
-        .btn-link:hover {
-          color: #1d4ed8;
         }
       `}</style>
     </div>

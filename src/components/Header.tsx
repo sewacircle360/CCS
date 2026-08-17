@@ -1,17 +1,15 @@
 import React from 'react';
 import { User } from '../types';
-import { Shield, GraduationCap, UserCheck, Database, LogOut, User as UserIcon } from 'lucide-react';
+import { Shield, GraduationCap, UserCheck, LogOut, User as UserIcon } from 'lucide-react';
 
 interface HeaderProps {
   currentUser: User | null;
   onLogout: () => void;
-  onOpenMongoGuide: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onLogout,
-  onOpenMongoGuide,
 }) => {
   return (
     <header className="cu-header">
@@ -24,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="brand-text">
               <div className="brand-title">
-                CAMPUS CONNECTIVITY SYSTEM <span className="version-pill">CU CCS v2.0</span>
+                CAMPUS CONNECTIVITY SYSTEM
               </div>
               <div className="brand-subtitle">Chandigarh University Cabin & Location Directory</div>
             </div>
@@ -32,11 +30,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Actions & User Account */}
           <div className="header-actions">
-            <button className="btn-guide" onClick={onOpenMongoGuide}>
-              <Database size={16} />
-              <span>MongoDB & Backend Architecture</span>
-            </button>
-
             {currentUser && (
               <button className="btn-logout" onClick={onLogout} title="Sign Out">
                 <LogOut size={16} />
@@ -119,16 +112,6 @@ export const Header: React.FC<HeaderProps> = ({
           font-weight: 800;
           font-size: 1.1rem;
           letter-spacing: 0.5px;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .version-pill {
-          background: rgba(255,255,255,0.2);
-          padding: 0.15rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 700;
         }
         .brand-subtitle {
           font-size: 0.775rem;
@@ -138,23 +121,6 @@ export const Header: React.FC<HeaderProps> = ({
           display: flex;
           align-items: center;
           gap: 0.75rem;
-        }
-        .btn-guide {
-          background: rgba(255,255,255,0.15);
-          color: #ffffff;
-          border: 1px solid rgba(255,255,255,0.3);
-          padding: 0.5rem 0.9rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .btn-guide:hover {
-          background: rgba(255,255,255,0.25);
         }
         .btn-logout {
           background: #ffffff;
