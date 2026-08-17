@@ -25,7 +25,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Password Visibility Toggles
+  // Password Visibility Toggles for ALL Password Fields
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showClaimPassword, setShowClaimPassword] = useState(false);
   const [showTeacherPassword, setShowTeacherPassword] = useState(false);
@@ -227,7 +227,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
       roomNumber: tRoomNumber,
       cabinNumber: tCabinNumber,
       subjects: subjectsArray,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+      avatar: '',
       designation: tDesignation,
     }, tPassword);
   };
@@ -380,6 +380,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               />
             </div>
 
+            {/* LOGIN PASSWORD WITH EYE TOGGLE */}
             <div className="form-group">
               <label>
                 <Lock size={16} /> Password:
@@ -390,14 +391,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="form-control"
+                  className="form-control password-input"
                   required
                 />
                 <button
                   type="button"
                   className="password-toggle-btn"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  title={showLoginPassword ? "Hide password" : "Show password"}
+                  title={showLoginPassword ? "Hide Password" : "Show Password"}
+                  aria-label="Toggle Password Visibility"
                 >
                   {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -449,6 +451,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               </div>
             )}
 
+            {/* CLAIM PASSWORD WITH EYE TOGGLE */}
             <div className="form-group">
               <label><Lock size={16} /> Set Password for Your Account *</label>
               <div className="password-input-wrapper">
@@ -457,13 +460,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   value={claimPassword}
                   onChange={(e) => setClaimPassword(e.target.value)}
                   placeholder="Set password (min 6 chars, 1 Big, 1 small, 1 symbol)"
-                  className="form-control"
+                  className="form-control password-input"
                   required
                 />
                 <button
                   type="button"
                   className="password-toggle-btn"
                   onClick={() => setShowClaimPassword(!showClaimPassword)}
+                  title={showClaimPassword ? "Hide Password" : "Show Password"}
+                  aria-label="Toggle Password Visibility"
                 >
                   {showClaimPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -517,6 +522,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   required
                 />
               </div>
+
+              {/* TEACHER REGISTER PASSWORD WITH EYE TOGGLE */}
               <div className="form-group flex-1">
                 <label>Account Password *</label>
                 <div className="password-input-wrapper">
@@ -525,13 +532,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                     value={tPassword}
                     onChange={(e) => setTPassword(e.target.value)}
                     placeholder="Set Password"
-                    className="form-control"
+                    className="form-control password-input"
                     required
                   />
                   <button
                     type="button"
                     className="password-toggle-btn"
                     onClick={() => setShowTeacherPassword(!showTeacherPassword)}
+                    title={showTeacherPassword ? "Hide Password" : "Show Password"}
+                    aria-label="Toggle Password Visibility"
                   >
                     {showTeacherPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -673,6 +682,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   required
                 />
               </div>
+
+              {/* STUDENT REGISTER PASSWORD WITH EYE TOGGLE */}
               <div className="form-group flex-1">
                 <label>Password *</label>
                 <div className="password-input-wrapper">
@@ -681,13 +692,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                     value={sPassword}
                     onChange={(e) => setSPassword(e.target.value)}
                     placeholder="Set Password (e.g. Deep@123)"
-                    className="form-control"
+                    className="form-control password-input"
                     required
                   />
                   <button
                     type="button"
                     className="password-toggle-btn"
                     onClick={() => setShowStudentPassword(!showStudentPassword)}
+                    title={showStudentPassword ? "Hide Password" : "Show Password"}
+                    aria-label="Toggle Password Visibility"
                   >
                     {showStudentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -876,10 +889,16 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           position: relative;
           display: flex;
           align-items: center;
+          width: 100%;
+        }
+        .password-input {
+          padding-right: 2.75rem !important;
         }
         .password-toggle-btn {
           position: absolute;
           right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
           background: transparent;
           border: none;
           color: var(--text-muted);
@@ -887,10 +906,14 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 0.25rem;
+          padding: 0.35rem;
+          border-radius: 6px;
+          z-index: 10;
+          transition: color 0.2s, background 0.2s;
         }
         .password-toggle-btn:hover {
           color: var(--cu-red);
+          background: #f1f5f9;
         }
         .pwd-rule-text {
           font-size: 0.75rem;
