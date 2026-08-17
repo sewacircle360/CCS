@@ -23,7 +23,15 @@ export const App: React.FC = () => {
 
   const [teachers, setTeachers] = useState<Teacher[]>(() => {
     const saved = localStorage.getItem('cu_ccs_teachers');
-    return saved ? JSON.parse(saved) : OFFICIAL_CU_FACULTY_LIST;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.log('Error parsing teachers:', e);
+      }
+    }
+    return OFFICIAL_CU_FACULTY_LIST;
   });
 
   const [students, setStudents] = useState<Student[]>(() => {
@@ -93,6 +101,11 @@ export const App: React.FC = () => {
 
           setTeachers(prev => {
             const combined = [...mappedTeachers];
+            OFFICIAL_CU_FACULTY_LIST.forEach(f => {
+              if (!combined.some(c => c.email.toLowerCase() === f.email.toLowerCase() || c.empId === f.empId)) {
+                combined.push(f);
+              }
+            });
             prev.forEach(p => {
               if (!combined.some(c => c.email.toLowerCase() === p.email.toLowerCase() || c.empId === p.empId)) {
                 combined.push(p);
@@ -181,7 +194,9 @@ export const App: React.FC = () => {
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('cu_ccs_teachers', JSON.stringify(teachers));
+    if (teachers && teachers.length > 0) {
+      localStorage.setItem('cu_ccs_teachers', JSON.stringify(teachers));
+    }
   }, [teachers]);
 
   useEffect(() => {
