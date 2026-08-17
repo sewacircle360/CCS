@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole, Teacher, Student, Appointment, TimetableSlot, User } from './types';
-import { INITIAL_USERS, INITIAL_TEACHERS, INITIAL_STUDENTS, INITIAL_APPOINTMENTS, INITIAL_TIMETABLES, INITIAL_BLOCKS } from './mockData';
+import { INITIAL_USERS, INITIAL_BLOCKS } from './mockData';
 import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
 import { LoginRegister } from './components/LoginRegister';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
+
+// Auto-wipe old cached mock data once to ensure 100% clean database
+const MOCK_DATA_VERSION = 'v3_clean_empty';
+if (localStorage.getItem('cu_ccs_data_version') !== MOCK_DATA_VERSION) {
+  localStorage.removeItem('cu_ccs_teachers');
+  localStorage.removeItem('cu_ccs_students');
+  localStorage.removeItem('cu_ccs_appointments');
+  localStorage.removeItem('cu_ccs_timetables');
+  localStorage.removeItem('cu_ccs_users');
+  localStorage.setItem('cu_ccs_data_version', MOCK_DATA_VERSION);
+}
 
 export const App: React.FC = () => {
   // Authentication State
@@ -22,22 +33,22 @@ export const App: React.FC = () => {
 
   const [teachers, setTeachers] = useState<Teacher[]>(() => {
     const saved = localStorage.getItem('cu_ccs_teachers');
-    return saved ? JSON.parse(saved) : INITIAL_TEACHERS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('cu_ccs_students');
-    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     const saved = localStorage.getItem('cu_ccs_appointments');
-    return saved ? JSON.parse(saved) : INITIAL_APPOINTMENTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [timetables, setTimetables] = useState<TimetableSlot[]>(() => {
     const saved = localStorage.getItem('cu_ccs_timetables');
-    return saved ? JSON.parse(saved) : INITIAL_TIMETABLES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Sync to Supabase & LocalStorage
