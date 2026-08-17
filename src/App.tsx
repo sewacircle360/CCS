@@ -267,11 +267,11 @@ export const App: React.FC = () => {
 
   // Get active teacher or student profile
   const activeTeacher = currentUser?.role === 'teacher'
-    ? (teachers.find(t => t.id === currentUser.profileId || t.email === currentUser.email) || teachers[0])
+    ? teachers.find(t => t.id === currentUser.profileId || t.email === currentUser.email)
     : null;
 
   const activeStudent = currentUser?.role === 'student'
-    ? (students.find(s => s.id === currentUser.profileId || s.email === currentUser.email) || students[0])
+    ? students.find(s => s.id === currentUser.profileId || s.email === currentUser.email)
     : null;
 
   return (
@@ -306,27 +306,43 @@ export const App: React.FC = () => {
             />
           )}
 
-          {currentUser.role === 'teacher' && activeTeacher && (
-            <TeacherDashboard
-              currentTeacher={activeTeacher}
-              appointments={appointments}
-              timetables={timetables}
-              onUpdateTeacher={handleUpdateTeacher}
-              onApproveAppointment={handleApproveAppointment}
-              onRejectAppointment={handleRejectAppointment}
-              onAddTimetableSlot={handleAddTimetableSlot}
-              onDeleteTimetableSlot={handleDeleteTimetableSlot}
-            />
+          {currentUser.role === 'teacher' && (
+            activeTeacher ? (
+              <TeacherDashboard
+                currentTeacher={activeTeacher}
+                appointments={appointments}
+                timetables={timetables}
+                onUpdateTeacher={handleUpdateTeacher}
+                onApproveAppointment={handleApproveAppointment}
+                onRejectAppointment={handleRejectAppointment}
+                onAddTimetableSlot={handleAddTimetableSlot}
+                onDeleteTimetableSlot={handleDeleteTimetableSlot}
+              />
+            ) : (
+              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <h3>No Teacher Profile Linked</h3>
+                <p>Please register your teacher profile from the registration page.</p>
+                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleLogout}>Back to Login / Register</button>
+              </div>
+            )
           )}
 
-          {currentUser.role === 'student' && activeStudent && (
-            <StudentDashboard
-              currentStudent={activeStudent}
-              teachers={teachers}
-              appointments={appointments}
-              timetables={timetables}
-              onBookAppointment={handleBookAppointment}
-            />
+          {currentUser.role === 'student' && (
+            activeStudent ? (
+              <StudentDashboard
+                currentStudent={activeStudent}
+                teachers={teachers}
+                appointments={appointments}
+                timetables={timetables}
+                onBookAppointment={handleBookAppointment}
+              />
+            ) : (
+              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <h3>No Student Profile Linked</h3>
+                <p>Please register your student profile from the registration page.</p>
+                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleLogout}>Back to Login / Register</button>
+              </div>
+            )
           )}
         </main>
       )}
