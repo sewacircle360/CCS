@@ -10,6 +10,14 @@ export const INITIAL_USERS: User[] = [
     name: 'CU System Master Admin',
     profileId: 'admin-master',
   },
+  {
+    id: 'user-deepak-24bcs10812',
+    email: '24bcs10812@cuchd.in',
+    password: 'Deep@123',
+    role: 'student',
+    name: 'DEEPAK',
+    profileId: 'stud-deepak-24bcs10812',
+  }
 ];
 
 export const ALL_BLOCK_CODES = [
@@ -44,7 +52,18 @@ export const TEACHER_ROLE_DESIGNATIONS = [
 
 export const INITIAL_TEACHERS: Teacher[] = OFFICIAL_CU_FACULTY_LIST;
 
-export const INITIAL_STUDENTS: Student[] = [];
+export const INITIAL_STUDENTS: Student[] = [
+  {
+    id: 'stud-deepak-24bcs10812',
+    userId: 'user-deepak-24bcs10812',
+    name: 'DEEPAK',
+    uid: '24BCS10812',
+    email: '24bcs10812@cuchd.in',
+    department: 'Computer Science & Engineering',
+    semester: 'Semester 5 (Year 3)',
+    phone: '+91 98000 10812',
+  }
+];
 
 export const INITIAL_APPOINTMENTS: Appointment[] = [];
 

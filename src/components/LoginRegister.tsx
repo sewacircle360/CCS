@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Teacher, Student, UserRole } from '../types';
 import { ALL_BLOCK_CODES, TEACHER_ROLE_DESIGNATIONS } from '../mockData';
-import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Key } from 'lucide-react';
+import { Shield, UserCheck, GraduationCap, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Key, Eye, EyeOff } from 'lucide-react';
 
 interface LoginRegisterProps {
   users: User[];
@@ -24,6 +24,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'claim' | 'register'>('login');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Password Visibility Toggles
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showClaimPassword, setShowClaimPassword] = useState(false);
+  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
 
   // Login Form
   const [loginEmail, setLoginEmail] = useState('');
@@ -54,8 +60,25 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
   const [sUid, setSUid] = useState('');
   const [sPhone, setSPhone] = useState('');
   const [sDept, setSDept] = useState('Computer Science & Engineering');
-  const [sSemVal, setSSemVal] = useState('Semester 1');
-  const [sYearVal, setSYearVal] = useState('Year 1 (1st Year)');
+  const [sSemVal, setSSemVal] = useState('Semester 5');
+  const [sYearVal, setSYearVal] = useState('Year 3 (3rd Year)');
+
+  // Helper for password validation (At least 6 chars, 1 uppercase, 1 lowercase, 1 symbol)
+  const validatePasswordStrength = (pwd: string): string | null => {
+    if (pwd.length < 6) {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      return 'Password must contain at least 1 Uppercase letter (A-Z).';
+    }
+    if (!/[a-z]/.test(pwd)) {
+      return 'Password must contain at least 1 Lowercase letter (a-z).';
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) {
+      return 'Password must contain at least 1 Special Symbol (e.g. @, #, $, !).';
+    }
+    return null;
+  };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,15 +144,15 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
       return;
     }
 
-    if (!claimPassword) {
-      setErrorMessage('Please set a password for your account.');
+    const pwdErr = validatePasswordStrength(claimPassword);
+    if (pwdErr) {
+      setErrorMessage(pwdErr);
       return;
     }
 
     // Check if user already activated
     const existingUser = users.find(u => u.email.toLowerCase() === matchedTeacher.email.toLowerCase());
     if (existingUser) {
-      // Login directly with updated password
       existingUser.password = claimPassword;
       onLoginSuccess(existingUser);
       return;
@@ -158,6 +181,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     setErrorMessage('');
     if (!tName || !tEmail || !tPassword || !tEmpId) {
       setErrorMessage('Please fill out all required fields.');
+      return;
+    }
+
+    const pwdErr = validatePasswordStrength(tPassword);
+    if (pwdErr) {
+      setErrorMessage(pwdErr);
       return;
     }
 
@@ -208,6 +237,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
     setErrorMessage('');
     if (!sName || !sEmail || !sPassword || !sUid) {
       setErrorMessage('Please fill out all required fields.');
+      return;
+    }
+
+    const pwdErr = validatePasswordStrength(sPassword);
+    if (pwdErr) {
+      setErrorMessage(pwdErr);
       return;
     }
 
@@ -336,9 +371,9 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                 placeholder={
                   portalRole === 'admin'
                     ? "sewacircle360@gmail.com"
-                    : portalRole === 'teacher'
-                    ? "e.g. ad1.cse@cumail.in or gagandeep.e8657@cumail.in"
-                    : "Enter your registered email address"
+                    : portalRole === 'student'
+                    ? "e.g. 24bcs10812@cuchd.in"
+                    : "e.g. ad1.cse@cumail.in or gagandeep.e8657@cumail.in"
                 }
                 className="form-control"
                 required
@@ -349,14 +384,24 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               <label>
                 <Lock size={16} /> Password:
               </label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Enter password"
-                className="form-control"
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showLoginPassword ? "text" : "password"}
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="form-control"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  title={showLoginPassword ? "Hide password" : "Show password"}
+                >
+                  {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block">
@@ -366,7 +411,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           </form>
         )}
 
-        {/* FORM 2: CLAIM / ACTIVATE PRE-LOADED CU FACULTY PROFILE (0 DUPLICATES!) */}
+        {/* FORM 2: CLAIM / ACTIVATE PRE-LOADED CU FACULTY PROFILE */}
         {authMode === 'claim' && portalRole === 'teacher' && (
           <form onSubmit={handleClaimSubmit} className="auth-form">
             <div className="claim-intro-card">
@@ -406,14 +451,24 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
 
             <div className="form-group">
               <label><Lock size={16} /> Set Password for Your Account *</label>
-              <input
-                type="password"
-                value={claimPassword}
-                onChange={(e) => setClaimPassword(e.target.value)}
-                placeholder="Set password to activate account"
-                className="form-control"
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showClaimPassword ? "text" : "password"}
+                  value={claimPassword}
+                  onChange={(e) => setClaimPassword(e.target.value)}
+                  placeholder="Set password (min 6 chars, 1 Big, 1 small, 1 symbol)"
+                  className="form-control"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowClaimPassword(!showClaimPassword)}
+                >
+                  {showClaimPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <small className="pwd-rule-text">Password requires: min 6 chars, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol (@,#,$,etc.)</small>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block">
@@ -464,16 +519,26 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
               </div>
               <div className="form-group flex-1">
                 <label>Account Password *</label>
-                <input
-                  type="password"
-                  value={tPassword}
-                  onChange={(e) => setTPassword(e.target.value)}
-                  placeholder="Set Password"
-                  className="form-control"
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showTeacherPassword ? "text" : "password"}
+                    value={tPassword}
+                    onChange={(e) => setTPassword(e.target.value)}
+                    placeholder="Set Password"
+                    className="form-control"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowTeacherPassword(!showTeacherPassword)}
+                  >
+                    {showTeacherPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
+            <small className="pwd-rule-text" style={{ marginTop: '-0.5rem' }}>Password rules: At least 6 characters, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol.</small>
 
             <div className="form-row">
               <div className="form-group flex-1">
@@ -559,7 +624,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                 onChange={(e) => setTSubjects(e.target.value)}
                 placeholder="e.g. Data Structures, Operating Systems, Machine Learning"
                 className="form-control"
-                required
               />
             </div>
 
@@ -579,7 +643,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={sName}
                   onChange={(e) => setSName(e.target.value)}
-                  placeholder="e.g. Aarav Mehta"
+                  placeholder="e.g. DEEPAK"
                   className="form-control"
                   required
                 />
@@ -590,7 +654,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="text"
                   value={sUid}
                   onChange={(e) => setSUid(e.target.value)}
-                  placeholder="e.g. 21BCS10045"
+                  placeholder="e.g. 24BCS10812"
                   className="form-control"
                   required
                 />
@@ -604,23 +668,33 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
                   type="email"
                   value={sEmail}
                   onChange={(e) => setSEmail(e.target.value)}
-                  placeholder="e.g. student.name@gmail.com"
+                  placeholder="e.g. 24bcs10812@cuchd.in"
                   className="form-control"
                   required
                 />
               </div>
               <div className="form-group flex-1">
                 <label>Password *</label>
-                <input
-                  type="password"
-                  value={sPassword}
-                  onChange={(e) => setSPassword(e.target.value)}
-                  placeholder="Set Password"
-                  className="form-control"
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showStudentPassword ? "text" : "password"}
+                    value={sPassword}
+                    onChange={(e) => setSPassword(e.target.value)}
+                    placeholder="Set Password (e.g. Deep@123)"
+                    className="form-control"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowStudentPassword(!showStudentPassword)}
+                  >
+                    {showStudentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
+            <small className="pwd-rule-text" style={{ marginTop: '-0.5rem' }}>Password rules: Min 6 characters, 1 Uppercase (A-Z), 1 Lowercase (a-z), 1 Symbol (@, #, $).</small>
 
             <div className="form-row">
               <div className="form-group flex-1">
@@ -796,6 +870,33 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({
           background: #ecfdf5;
           border: 1px solid #a7f3d0;
           color: #059669;
+        }
+
+        .password-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .password-toggle-btn {
+          position: absolute;
+          right: 0.75rem;
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.25rem;
+        }
+        .password-toggle-btn:hover {
+          color: var(--cu-red);
+        }
+        .pwd-rule-text {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          display: block;
+          margin-top: 0.25rem;
         }
 
         .claim-intro-card {
